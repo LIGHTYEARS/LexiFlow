@@ -1,14 +1,15 @@
 import { z } from 'zod';
 
 /**
- * Cross-context message envelope. All commands and events use this versioned envelope.
- * See technical-design/01 §6 for the full contract.
+ * Zod schema for the cross-context message envelope.
+ * All inbound messages are validated with safeParse before processing.
+ * See technical-design/01 §6 and technical-design/02 §5.
  */
 export const MessageEnvelopeSchema = z.object({
   protocolVersion: z.literal(1),
-  type: z.string(),
+  type: z.string().min(1),
   requestId: z.string().uuid(),
-  tabId: z.number().optional(),
+  tabId: z.number().int().optional(),
   occurredAt: z.string().datetime(),
   payload: z.unknown(),
 });
@@ -30,8 +31,7 @@ export type AppResult<T> =
   | { ok: false; requestId: string; error: AppError };
 
 /**
- * Application error codes. These are stable, user-facing categories.
- * The actual error message is generated in the UI layer.
+ * Application error codes — stable, user-facing categories.
  */
 export const AppErrorCodeSchema = z.enum([
   'INVALID_INPUT',
@@ -58,6 +58,16 @@ export type AppError = {
 };
 
 /**
+ * AppError Zod schema for validation across boundaries.
+ */
+export const AppErrorSchema = z.object({
+  code: AppErrorCodeSchema,
+  userMessage: z.string(),
+  retryable: z.boolean(),
+  diagnosticId: z.string().optional(),
+});
+
+/**
  * Helper to create a successful result.
  */
 export function ok<T>(requestId: string, data: T): AppResult<T> {
@@ -69,4 +79,41 @@ export function ok<T>(requestId: string, data: T): AppResult<T> {
  */
 export function fail(requestId: string, error: AppError): AppResult<never> {
   return { ok: false, requestId, error };
+}
+
+/**
+ * Create an AppError with a generated diagnostic ID.
+ */
+export function createError(
+  code: AppErrorCode,
+  userMessage: string,
+  retryable = false,
+): AppError {
+  return {
+    code,
+    userMessage,
+    retryable,
+    diagnosticId: crypto.randomUUID(),
+  };
+}
+
+/**
+ * Maximum message payload size (64 KiB). See technical-design/11 §5.
+ */
+export const MAX_MESSAGE_PAYLOAD_BYTES = 64 * 1024;
+
+/**
+ * Validate an incoming message envelope.
+ * Returns the parsed envelope or throws with INVALID_INPUT.
+ */
+export function validateEnvelope(raw: unknown): MessageEnvelope {
+  const result = MessageEnvelopeSchema.safeParse(raw);
+  if (!result.success) {
+    throw createError(
+      'INVALID_INPUT',
+      'Message envelope validation failed: ' + result.error.message,
+      false,
+    );
+  }
+  return result.data as MessageEnvelope;
 }

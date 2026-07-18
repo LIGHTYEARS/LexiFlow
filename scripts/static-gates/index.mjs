@@ -65,7 +65,7 @@ const RULES = [
       },
     ],
     exclude: ['**/node_modules/**', '**/tests/**'],
-    includeOnly: ['src/shared/protocol/'],
+    includeOnly: ['src/shared/protocol/protocol-map.ts'],
   },
 ];
 

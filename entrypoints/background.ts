@@ -1,77 +1,130 @@
 import { defineBackground } from 'wxt/utils/define-background';
+import { messageRegistry } from '@infra/messaging/message-registry';
+import { initializeStorageAccess } from '@infra/storage/settings-gateway';
+import {
+  registerContentScriptsForOrigins,
+  unregisterContentScripts,
+  getAuthorizedOrigins,
+} from '@infra/permissions/page-access-policy';
+import { registerCoreHandlers } from '@app/core/handlers';
+import { fail, createError } from '@shared/protocol/envelope';
 
 // LexiFlow Background Service Worker
 // MV3: event-driven, can be terminated at any time. No in-memory truth.
+// See technical-design/02 §7.
 
 export default defineBackground(() => {
-  // Set storage access level to trusted contexts only.
-  // This prevents content scripts from reading sensitive settings/credentials.
-  chrome.storage.local
-    .setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
-    .catch((err) => {
-      console.error('[LexiFlow] Failed to set storage access level:', err);
-    });
+  // ── Startup: Set storage access level ──
+  initializeStorageAccess();
 
-  // Register content scripts for already-authorized origins on startup.
-  // This is idempotent — re-registering the same origin is a no-op.
-  chrome.permissions.getAll().then((permissions) => {
-    const origins = permissions.origins ?? [];
-    const httpOrigins = origins.filter(
-      (o) => o.startsWith('http://') || o.startsWith('https://'),
-    );
-    if (httpOrigins.length > 0) {
-      chrome.scripting
-        .registerContentScripts([
-          {
-            id: 'lexiflow-content',
-            matches: httpOrigins,
-            js: ['/content.js'],
-            runAt: 'document_idle',
-            allFrames: false,
-          },
-        ])
-        .catch((err) => {
-          console.error('[LexiFlow] Failed to register content scripts:', err);
-        });
+  // ── Register all message handlers ──
+  registerCoreHandlers();
+
+  // ── Startup: Register content scripts for already-authorized origins ──
+  getAuthorizedOrigins().then((origins) => {
+    if (origins.length > 0) {
+      registerContentScriptsForOrigins(origins);
     }
   });
 
-  // Handle permission changes — dynamically register/unregister content scripts.
+  // ── Message routing: validate envelope → dispatch to registered handlers ──
+  chrome.runtime.onMessage.addListener(
+    (rawEnvelope, sender, sendResponse) => {
+      // Handle async — return true to keep the message channel open
+      messageRegistry
+        .handle(rawEnvelope, sender)
+        .then((result) => sendResponse(result))
+        .catch(() => {
+          sendResponse(
+            fail(
+              (rawEnvelope as { requestId?: string })?.requestId || 'unknown',
+              createError('INTERNAL', 'Unexpected message handling error', false),
+            ),
+          );
+        });
+      return true; // async response
+    },
+  );
+
+  // ── Permission changes: dynamically register/unregister content scripts ──
   chrome.permissions.onAdded.addListener((permissions) => {
     const origins = permissions.origins ?? [];
     if (origins.length > 0) {
-      chrome.scripting
-        .registerContentScripts([
-          {
-            id: 'lexiflow-content',
-            matches: origins,
-            js: ['/content.js'],
-            runAt: 'document_idle',
-            allFrames: false,
-          },
-        ])
-        .catch((err) => {
-          console.error('[LexiFlow] Failed to register content scripts on permission add:', err);
-        });
+      // Re-register for all current authorized origins
+      getAuthorizedOrigins().then((allOrigins) => {
+        registerContentScriptsForOrigins(allOrigins);
+      });
     }
   });
 
   chrome.permissions.onRemoved.addListener((permissions) => {
     const origins = permissions.origins ?? [];
     if (origins.length > 0) {
-      chrome.scripting
-        .unregisterContentScripts({ ids: ['lexiflow-content'] })
-        .catch((err) => {
-          console.error('[LexiFlow] Failed to unregister content scripts:', err);
-        });
+      // Check if any http/https origins remain
+      getAuthorizedOrigins().then((remainingOrigins) => {
+        const httpOrigins = remainingOrigins.filter(
+          (o) => o.startsWith('http://') || o.startsWith('https://'),
+        );
+        if (httpOrigins.length === 0) {
+          unregisterContentScripts();
+        } else {
+          registerContentScriptsForOrigins(httpOrigins);
+        }
+      });
     }
   });
 
-  // Keyboard shortcuts
+  // ── Keyboard shortcuts ──
   chrome.commands.onCommand.addListener((command) => {
-    console.log('[LexiFlow] Command received:', command);
-    // Command routing is implemented in M1 with typed messaging.
+    handleCommand(command);
+  });
+
+  // ── Extension install/update ──
+  chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason === 'install') {
+      console.log('[LexiFlow] Extension installed');
+      // Settings are initialized lazily on first read
+    } else if (details.reason === 'update') {
+      console.log('[LexiFlow] Extension updated to', chrome.runtime.getManifest().version);
+      // Migration is handled by Dexie versioning + settings schema version check
+    }
   });
 
   console.log('[LexiFlow] Background service worker initialized');
 });
+
+/**
+ * Handle keyboard commands.
+ * Commands are routed to the active tab's content script or extension pages.
+ */
+async function handleCommand(command: string): Promise<void> {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || tab.id === undefined) return;
+
+    // Send command to content script if the page is authorized
+    const origins = await getAuthorizedOrigins();
+    const tabUrl = tab.url;
+    if (tabUrl) {
+      const isAuthorized = origins.some((origin) => {
+        // Simple match: convert origin pattern to regex check
+        const pattern = origin.replace(/\*/g, '.*');
+        return new RegExp('^' + pattern + '$').test(tabUrl);
+      });
+
+      if (isAuthorized) {
+        chrome.tabs.sendMessage(tab.id, {
+          protocolVersion: 1,
+          type: 'command/' + command,
+          requestId: crypto.randomUUID(),
+          occurredAt: new Date().toISOString(),
+          payload: { command },
+        }).catch(() => {
+          // Content script may not be loaded yet
+        });
+      }
+    }
+  } catch (error) {
+    console.error('[LexiFlow] Command handling error:', error);
+  }
+}

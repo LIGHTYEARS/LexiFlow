@@ -2,46 +2,50 @@ import 'fake-indexeddb/auto';
 import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
 
-// Mock Chrome extension APIs
+// Mock Chrome extension APIs for unit/integration tests
 const chromeMock = {
   storage: {
     local: {
-      get: vi.fn(),
-      set: vi.fn(),
-      remove: vi.fn(),
-      clear: vi.fn(),
-      setAccessLevel: vi.fn(),
+      get: vi.fn().mockResolvedValue({}),
+      set: vi.fn().mockResolvedValue(undefined),
+      remove: vi.fn().mockResolvedValue(undefined),
+      clear: vi.fn().mockResolvedValue(undefined),
+      setAccessLevel: vi.fn().mockResolvedValue(undefined),
     },
     onChanged: {
       addListener: vi.fn(),
     },
   },
   runtime: {
-    sendMessage: vi.fn(),
+    sendMessage: vi.fn().mockResolvedValue(undefined),
     onMessage: {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     },
     getURL: (path: string) => `chrome-extension://test/${path}`,
     id: 'test-extension-id',
+    getManifest: vi.fn().mockReturnValue({ version: '0.1.0' }),
+    onInstalled: {
+      addListener: vi.fn(),
+    },
   },
   permissions: {
-    request: vi.fn(),
-    contains: vi.fn(),
-    remove: vi.fn(),
-    getAll: vi.fn(),
+    request: vi.fn().mockResolvedValue({ granted: true }),
+    contains: vi.fn().mockResolvedValue(true),
+    remove: vi.fn().mockResolvedValue({ removed: true }),
+    getAll: vi.fn().mockResolvedValue({ origins: [], permissions: [] }),
     onAdded: { addListener: vi.fn() },
     onRemoved: { addListener: vi.fn() },
   },
   scripting: {
-    registerContentScripts: vi.fn(),
-    unregisterContentScripts: vi.fn(),
-    executeScript: vi.fn(),
-    getRegisteredContentScripts: vi.fn(),
+    registerContentScripts: vi.fn().mockResolvedValue(undefined),
+    unregisterContentScripts: vi.fn().mockResolvedValue(undefined),
+    executeScript: vi.fn().mockResolvedValue(undefined),
+    getRegisteredContentScripts: vi.fn().mockResolvedValue([]),
   },
   sidePanel: {
-    open: vi.fn(),
-    setPanelBehavior: vi.fn(),
+    open: vi.fn().mockResolvedValue(undefined),
+    setPanelBehavior: vi.fn().mockResolvedValue(undefined),
   },
   commands: {
     onCommand: {
@@ -49,9 +53,9 @@ const chromeMock = {
     },
   },
   tabs: {
-    query: vi.fn(),
-    sendMessage: vi.fn(),
-    create: vi.fn(),
+    query: vi.fn().mockResolvedValue([{ id: 1, url: 'https://example.com' }]),
+    sendMessage: vi.fn().mockResolvedValue(undefined),
+    create: vi.fn().mockResolvedValue({ id: 2 }),
     onActivated: { addListener: vi.fn() },
     onUpdated: { addListener: vi.fn() },
   },
