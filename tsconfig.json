@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@domain/*": ["src/domain/*"],
+      "@app/*": ["src/application/*"],
+      "@infra/*": ["src/infrastructure/*"],
+      "@adapters/*": ["src/adapters/*"],
+      "@shared/*": ["src/shared/*"],
+      "@content-ui/*": ["src/content-ui/*"],
+      "@entrypoints/*": ["entrypoints/*"]
+    },
+    "types": ["chrome", "vitest/globals", "@testing-library/jest-dom"]
+  },
+  "include": [
+    "entrypoints/**/*.ts",
+    "entrypoints/**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    "wxt.config.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", ".output", ".wxt", "artifacts", "scripts"]
+}

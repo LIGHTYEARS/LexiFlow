@@ -1,0 +1,95 @@
+import { z } from 'zod';
+
+/**
+ * Card entity — the core knowledge unit.
+ * See technical-design/04 §5.1.
+ */
+export const CardSchema = z.object({
+  id: z.string().uuid(),
+  revision: z.number().int().positive(),
+  type: z.enum(['word', 'phrase', 'sentence', 'technical_term']),
+  status: z.enum(['active', 'paused', 'archived', 'deleted']),
+  headword: z.object({
+    value: z.string(),
+    origin: z.enum(['web_page', 'user', 'model', 'import']),
+    sourceCaptureId: z.string().uuid().optional(),
+    modelRunId: z.string().uuid().optional(),
+    editedAt: z.string().optional(),
+  }),
+  normalizedKey: z.string(),
+  explanations: z.array(
+    z.object({
+      value: z.string(),
+      origin: z.enum(['web_page', 'user', 'model', 'import']),
+      sourceCaptureId: z.string().uuid().optional(),
+      modelRunId: z.string().uuid().optional(),
+      editedAt: z.string().optional(),
+    }),
+  ),
+  examples: z.array(
+    z.object({
+      value: z.string(),
+      origin: z.enum(['web_page', 'user', 'model', 'import']),
+      sourceCaptureId: z.string().uuid().optional(),
+      modelRunId: z.string().uuid().optional(),
+      editedAt: z.string().optional(),
+    }),
+  ),
+  notes: z.array(
+    z.object({
+      value: z.string(),
+      origin: z.enum(['web_page', 'user', 'model', 'import']),
+      sourceCaptureId: z.string().uuid().optional(),
+      modelRunId: z.string().uuid().optional(),
+      editedAt: z.string().optional(),
+    }),
+  ),
+  tagIds: z.array(z.string().uuid()),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  deletedAt: z.string().datetime().optional(),
+});
+
+export type Card = z.infer<typeof CardSchema>;
+
+/**
+ * Type-specific card content. Uses discriminated union.
+ * See technical-design/04 §5.1 (details field).
+ */
+export const WordContentSchema = z.object({
+  cardType: z.literal('word'),
+  lemma: z.string().optional(),
+  partOfSpeech: z.string().optional(),
+  pronunciation: z.string().optional(),
+  senses: z.array(z.unknown()).optional(),
+});
+
+export const PhraseContentSchema = z.object({
+  cardType: z.literal('phrase'),
+  register: z.string().optional(),
+  patterns: z.array(z.string()).optional(),
+  collocations: z.array(z.string()).optional(),
+});
+
+export const SentenceContentSchema = z.object({
+  cardType: z.literal('sentence'),
+  translation: z.string().optional(),
+  reusableStructure: z.array(z.string()).optional(),
+  imitationExamples: z.array(z.string()).optional(),
+});
+
+export const TechnicalTermContentSchema = z.object({
+  cardType: z.literal('technical_term'),
+  domain: z.string().optional(),
+  relatedConcepts: z.array(z.string()).optional(),
+  commonConfusions: z.array(z.string()).optional(),
+});
+
+export const CardContentSchema = z.discriminatedUnion('cardType', [
+  WordContentSchema,
+  PhraseContentSchema,
+  SentenceContentSchema,
+  TechnicalTermContentSchema,
+]);
+
+export type CardContent = z.infer<typeof CardContentSchema>;
