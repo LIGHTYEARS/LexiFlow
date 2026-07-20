@@ -2,9 +2,13 @@ import { defineContentScript } from 'wxt/utils/define-content-script';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { validateEnvelope } from '@shared/protocol/envelope';
 import type { MessageEnvelope } from '@shared/protocol/envelope';
+import { createPageSessionRef } from '@shared/protocol/page-session';
+import { SelectionController } from '@content-ui/SelectionController';
+import React from 'react';
+import { createRoot } from 'react-dom/client';
 
 // LexiFlow Content Script
-// Injects ShadowRoot UI into authorized pages. Selection handling is implemented in M3.
+// Injects ShadowRoot UI into authorized pages.
 // See technical-design/02 §8.1 and technical-design/03.
 
 export default defineContentScript({
@@ -15,16 +19,32 @@ export default defineContentScript({
   registration: 'runtime',
 
   async main(ctx) {
-    // Placeholder: full selection trigger + explanation popover in M3.
     console.log('[LexiFlow] Content script loaded on:', window.location.href);
 
-    // Create a minimal ShadowRoot UI host.
+    // Create page session ref for this document
+    const tabId = await getTabId();
+    const runtimeWithDocumentId = chrome.runtime as unknown as { documentId?: string };
+    const pageSession = createPageSessionRef(
+      tabId,
+      window.location.href,
+      // Use Chrome's documentId if available
+      runtimeWithDocumentId.documentId,
+    );
+
+    // Create ShadowRoot UI host
     const ui = await createShadowRootUi(ctx, {
       name: 'lexiflow-content-ui',
       position: 'inline',
       append: 'last',
       onMount(uiContainer) {
-        uiContainer.textContent = 'LexiFlow ready';
+        // Render the SelectionController into the ShadowRoot
+        const root = createRoot(uiContainer);
+        root.render(
+          React.createElement(SelectionController, {
+            pageSession,
+            hostElement: uiContainer,
+          }),
+        );
       },
     });
 
@@ -37,7 +57,7 @@ export default defineContentScript({
         try {
           envelope = validateEnvelope(rawEnvelope);
         } catch {
-          // Not a valid envelope — ignore (could be from other extensions)
+          // Not a valid envelope — ignore
           return false;
         }
 
@@ -49,7 +69,6 @@ export default defineContentScript({
           return true;
         }
 
-        // Handle other message types (M3+: selection, explanation requests)
         return false; // not handled
       },
     );
@@ -62,10 +81,22 @@ export default defineContentScript({
 });
 
 /**
+ * Get the current tab ID.
+ */
+async function getTabId(): Promise<number> {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tab?.id ?? -1;
+  } catch {
+    return -1;
+  }
+}
+
+/**
  * Handle keyboard commands forwarded from background.
- * Full implementation in M3.
  */
 function handleCommand(command: string): void {
   console.log('[LexiFlow] Command received in content:', command);
-  // M3: implement trigger explanation, save to inbox, close UI, etc.
+  // Command handling is done via keyboard events in SelectionController
+  // (Alt+L triggers explanation, Escape closes)
 }
