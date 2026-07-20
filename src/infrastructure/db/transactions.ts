@@ -6,6 +6,14 @@ import { canonicalizeUrl } from '@shared/utils/url';
 import type { Card } from '@domain/card/card.model';
 import type { SourceCapture } from '@domain/source/source.model';
 import type { ReviewEvent, ScheduleSnapshot, ReviewRating } from '@domain/review/review.model';
+import type { ErrorType } from '@domain/error/error.model';
+import type { SaveCaptureResult } from './repository';
+
+/**
+ * Valid review mode values, matching ReviewEvent['mode'] enum.
+ * Used for runtime validation before casting from string input.
+ */
+const VALID_REVIEW_MODES = ['quick', 'input', 'cloze', 'imitation', 'distinction'] as const;
 
 /**
  * Transactional operations for the LexiFlow knowledge base.
@@ -26,20 +34,13 @@ export type SaveCaptureInput = {
   requestedAction: 'save' | 'save-to-inbox';
 };
 
-export type SaveCaptureOutput = {
-  captureId: string;
-  status: 'new-card' | 'appended' | 'skipped' | 'inbox' | 'failed';
-  cardId?: string;
-  message: string;
-};
-
 /**
  * Save a capture with idempotency (by requestId).
  * Transaction: upsert SourcePage → insert SourceCapture → insert InboxItem → OperationLog.
  */
 export async function saveCaptureTransaction(
   input: SaveCaptureInput,
-): Promise<SaveCaptureOutput> {
+): Promise<SaveCaptureResult> {
   // Idempotency check: if we've already processed this request, return the same result
   const existing = await db.sourceCaptures.get({ captureRequestId: input.requestId });
   if (existing) {
@@ -287,7 +288,7 @@ export type RecordReviewInput = {
   resultingState: ScheduleSnapshot['state'];
   answer?: string;
   durationMs?: number;
-  confirmedErrorTypes?: string[];
+  confirmedErrorTypes?: ErrorType[];
 };
 
 /**
@@ -333,6 +334,12 @@ export async function recordReviewTransaction(
       }
 
       // Append ReviewEvent (immutable)
+      // Validate mode against known enum values before casting
+      if (!VALID_REVIEW_MODES.includes(input.mode as typeof VALID_REVIEW_MODES[number])) {
+        throw createError('INVALID_INPUT', `Invalid review mode: ${input.mode}`, false);
+      }
+      const validatedMode = input.mode as ReviewEvent['mode'];
+
       const reviewEvent: ReviewEvent = {
         eventId,
         cardId: input.cardId,
@@ -343,7 +350,7 @@ export async function recordReviewTransaction(
         rating: input.rating,
         previousStateHash: input.previousStateHash,
         resultingState: input.resultingState,
-        mode: input.mode as ReviewEvent['mode'],
+        mode: validatedMode,
         source: 'review',
       };
       await db.reviewEvents.add(reviewEvent);
@@ -368,6 +375,8 @@ export async function recordReviewTransaction(
         dueAt: input.resultingState.dueAt,
         stateHash,
         schedulerVersion: input.resultingState.schedulerVersion,
+        // parameterSetId is derived from schedulerVersion for traceability —
+        // it identifies which FSRS parameter set produced this snapshot.
         parameterSetId: input.resultingState.schedulerVersion,
       });
 

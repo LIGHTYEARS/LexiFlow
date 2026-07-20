@@ -109,8 +109,8 @@ export function validateSelection(
     const range = selection.getRangeAt(0);
     const container = range.commonAncestorContainer;
     const element =
-      container.nodeType === Node.ELEMENT_NODE
-        ? (container as HTMLElement)
+      container instanceof HTMLElement
+        ? container
         : container.parentElement;
     if (element && hostElement.contains(element)) {
       return { valid: false, reason: 'in_lexiflow_ui' };
@@ -121,8 +121,8 @@ export function validateSelection(
   const range = selection.getRangeAt(0);
   const ancestor = range.commonAncestorContainer;
   const ancestorEl =
-    ancestor.nodeType === Node.ELEMENT_NODE
-      ? (ancestor as HTMLElement)
+    ancestor instanceof HTMLElement
+      ? ancestor
       : ancestor.parentElement;
   if (ancestorEl) {
     const tagName = ancestorEl.tagName.toLowerCase();

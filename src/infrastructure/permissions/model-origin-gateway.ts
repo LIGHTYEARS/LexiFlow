@@ -12,11 +12,9 @@ import type { AppError } from '@shared/protocol/envelope';
  * Allows https://host[:port][/path-prefix] and explicitly-confirmed localhost http.
  * Rejects userinfo, query, fragment, and non-http(s) schemes.
  */
-export function validateModelBaseUrl(url: string): {
-  valid: boolean;
-  origin?: string;
-  error?: AppError;
-} {
+export function validateModelBaseUrl(url: string):
+  | { valid: true; origin: string }
+  | { valid: false; error: AppError } {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -73,7 +71,7 @@ export function validateModelBaseUrl(url: string): {
  */
 export function deriveModelOriginPattern(baseUrl: string): string | null {
   const validation = validateModelBaseUrl(baseUrl);
-  if (!validation.valid || !validation.origin) return null;
+  if (!validation.valid) return null;
   return `${validation.origin}/*`;
 }
 
@@ -128,12 +126,12 @@ export async function removeModelAccess(
  * Check if a model request can be made to the given base URL.
  * Combines URL validation and permission check.
  */
-export async function canMakeModelRequest(baseUrl: string): Promise<{
-  allowed: boolean;
-  error?: AppError;
-}> {
+export async function canMakeModelRequest(baseUrl: string): Promise<
+  | { allowed: true }
+  | { allowed: false; error: AppError }
+> {
   const validation = validateModelBaseUrl(baseUrl);
-  if (!validation.valid || !validation.origin) {
+  if (!validation.valid) {
     return { allowed: false, error: validation.error };
   }
 

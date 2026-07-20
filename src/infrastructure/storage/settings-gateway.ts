@@ -1,6 +1,6 @@
 import { createError } from '@shared/protocol/envelope';
 import type { AppError } from '@shared/protocol/envelope';
-import { UserSettingsSchema, DEFAULT_SETTINGS } from './settings-schema';
+import { UserSettingsSchema, DEFAULT_SETTINGS, CredentialSchema } from './settings-schema';
 import type { UserSettings, Credential } from './settings-schema';
 
 /**
@@ -32,7 +32,7 @@ export async function initializeStorageAccess(): Promise<void> {
 export async function getSettings(): Promise<UserSettings> {
   try {
     const result = await chrome.storage.local.get(SETTINGS_KEY);
-    const raw = result[SETTINGS_KEY];
+    const raw: unknown = result[SETTINGS_KEY];
 
     if (!raw) {
       // First run — save and return defaults
@@ -154,8 +154,13 @@ export async function saveCredential(
 export async function getCredentialValue(credentialRef: string): Promise<string | null> {
   try {
     const result = await chrome.storage.local.get(CREDENTIALS_KEY);
-    const credential = result[CREDENTIALS_KEY] as Credential | undefined;
-    if (credential && credential.id === credentialRef) {
+    const raw: unknown = result[CREDENTIALS_KEY];
+    const parsed = CredentialSchema.safeParse(raw);
+    if (!parsed.success) {
+      return null;
+    }
+    const credential = parsed.data;
+    if (credential.id === credentialRef) {
       return credential.encryptedValue;
     }
     return null;
@@ -170,7 +175,8 @@ export async function getCredentialValue(credentialRef: string): Promise<string 
 export async function hasCredential(): Promise<boolean> {
   try {
     const result = await chrome.storage.local.get(CREDENTIALS_KEY);
-    return !!result[CREDENTIALS_KEY];
+    const raw: unknown = result[CREDENTIALS_KEY];
+    return !!raw;
   } catch {
     return false;
   }
@@ -193,7 +199,8 @@ export async function deleteCredential(): Promise<void> {
 export async function getSchemaVersion(): Promise<number> {
   try {
     const result = await chrome.storage.local.get(SCHEMA_VERSION_KEY);
-    return result[SCHEMA_VERSION_KEY] ?? 0;
+    const raw: unknown = result[SCHEMA_VERSION_KEY];
+    return typeof raw === 'number' ? raw : 0;
   } catch {
     return 0;
   }

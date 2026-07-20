@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ERROR_TYPES } from '@domain/error/error.model';
 
 /**
  * FSRS state DTO — stores what ts-fsrs needs.
@@ -11,8 +12,8 @@ export const FsrsStateDtoSchema = z.object({
   dueAt: z.string().datetime(),
   stability: z.number(),
   difficulty: z.number(),
-  elapsedDays: z.number(),
-  scheduledDays: z.number(),
+  elapsedDays: z.number().int(),
+  scheduledDays: z.number().int(),
   reps: z.number().int(),
   lapses: z.number().int(),
   lastReviewedAt: z.string().datetime().optional(),
@@ -50,7 +51,7 @@ export type ReviewRating = ReviewEvent['rating'];
  */
 export const ScheduleSnapshotSchema = z.object({
   cardId: z.string().uuid(),
-  lastSequence: z.number().int(),
+  lastSequence: z.number().int().positive(),
   state: FsrsStateDtoSchema,
   dueAt: z.string().datetime(),
   stateHash: z.string(),
@@ -69,11 +70,11 @@ export const ReviewAttemptDetailSchema = z.object({
   cardId: z.string().uuid(),
   sessionId: z.string().uuid(),
   answer: z.string().optional(),
-  referenceAnswerRef: z.string().optional(),
-  durationMs: z.number().int().optional(),
+  referenceAnswerRef: z.string().uuid().optional(),
+  durationMs: z.number().int().positive().optional(),
   personalNote: z.string().optional(),
-  suggestedErrorTypes: z.array(z.string()),
-  confirmedErrorTypes: z.array(z.string()),
+  suggestedErrorTypes: z.array(z.enum(ERROR_TYPES)),
+  confirmedErrorTypes: z.array(z.enum(ERROR_TYPES)),
 });
 
 export type ReviewAttemptDetail = z.infer<typeof ReviewAttemptDetailSchema>;

@@ -15,6 +15,97 @@ import type {
 } from '@domain/review/review.model';
 import type { ErrorAnnotation } from '@domain/error/error.model';
 
+export interface ReviewSessionRecord {
+  id: string;
+  status: 'active' | 'completed' | 'abandoned';
+  startedAt: string;
+  completedAt?: string;
+  mode?: string;
+  config?: {
+    maxNew?: number;
+    maxReview?: number;
+    modes?: string[];
+  };
+}
+
+export interface PracticeSessionRecord {
+  id: string;
+  status: 'preparing' | 'active' | 'completed' | 'cancelled' | 'failed';
+  source: {
+    type: string;
+    cardIds: string[];
+    errorIds: string[];
+  };
+  blueprint: {
+    itemCount: number;
+    types: string[];
+  };
+  affectsFsrs: boolean;
+  startedAt: string;
+  completedAt?: string;
+}
+
+export interface PracticeItemRecord {
+  id: string;
+  sessionId: string;
+  type: string;
+  cardIds: string[];
+  prompt: string;
+  acceptAnswers?: string[];
+  explanation?: string;
+  source: 'rule' | 'model';
+  difficulty?: 'easy' | 'medium' | 'hard';
+}
+
+export interface PracticeAttemptRecord {
+  id: string;
+  itemId: string;
+  sessionId: string;
+  userAnswer: string;
+  outcome: 'correct' | 'incorrect' | 'partial' | 'skipped';
+  score?: number;
+  fsrsRating?: 'again' | 'hard' | 'good' | 'easy';
+  durationMs?: number;
+  createdAt: string;
+}
+
+export interface OperationLogRecord {
+  id: string;
+  requestId: string;
+  type: string;
+  status: 'pending' | 'completed' | 'failed';
+  executedAt: string;
+  entityIds?: string[];
+  errorCode?: string;
+  details?: unknown;
+}
+
+export interface ModelRunMetadataRecord {
+  id: string;
+  task: string;
+  status: 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+  modelId?: string;
+  promptVersion?: string;
+  startedAt?: string;
+  completedAt?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  errorCode?: string;
+}
+
+export interface SearchOutboxRecord {
+  sequence: number;
+  entityId: string;
+  operation: 'upsert' | 'delete';
+  entityType?: 'card' | 'tag' | 'source';
+  createdAt?: string;
+}
+
+/**
+ * Union type covering the expected metadata value types stored in the `meta` table.
+ */
+export type MetaValue = string | number | boolean | null;
+
 /**
  * LexiFlow Dexie database — v1 schema.
  * See technical-design/04 §6 for the full schema definition.
@@ -44,23 +135,23 @@ export class LexiFlowDatabase extends Dexie {
   reviewEvents!: Table<ReviewEvent, string>;
   scheduleSnapshots!: Table<ScheduleSnapshot, string>;
   reviewAttemptDetails!: Table<ReviewAttemptDetail, string>;
-  reviewSessions!: Table<Record<string, unknown>, string>;
+  reviewSessions!: Table<ReviewSessionRecord, string>;
 
   // Errors
   errorAnnotations!: Table<ErrorAnnotation, string>;
 
   // Practice
-  practiceSessions!: Table<Record<string, unknown>, string>;
-  practiceItems!: Table<Record<string, unknown>, string>;
-  practiceAttempts!: Table<Record<string, unknown>, string>;
+  practiceSessions!: Table<PracticeSessionRecord, string>;
+  practiceItems!: Table<PracticeItemRecord, string>;
+  practiceAttempts!: Table<PracticeAttemptRecord, string>;
 
   // Operations & Metadata
-  operationLogs!: Table<Record<string, unknown>, string>;
-  modelRunMetadata!: Table<Record<string, unknown>, string>;
+  operationLogs!: Table<OperationLogRecord, string>;
+  modelRunMetadata!: Table<ModelRunMetadataRecord, string>;
 
   // Search projection
-  searchOutbox!: Table<Record<string, unknown>, number>;
-  meta!: Table<{ key: string; value: unknown }, string>;
+  searchOutbox!: Table<SearchOutboxRecord, number>;
+  meta!: Table<{ key: string; value: MetaValue }, string>;
 
   constructor() {
     super('lexiflow');

@@ -66,7 +66,8 @@ See [docs/technical-design/01-architecture-and-technology-baseline.md](docs/tech
 | M0 | Project Scaffold & Architecture Baseline | ✅ Done |
 | M1 | Runtime & Communication Layer | ✅ Done |
 | M2 | Data Layer & Domain Model | ✅ Done |
-| M3 | Selection Trigger & Context Extraction | ⬜ Planned |
+| M3 | Selection Trigger & Context Extraction | ✅ Done |
+| M4 | AI Task Execution | ⬜ Planned |
 | M3 | Selection Trigger & Context Extraction | ⬜ Planned |
 | M4 | AI Task Execution | ⬜ Planned |
 | M5 | Capture, Dedup & Inbox | ⬜ Planned |

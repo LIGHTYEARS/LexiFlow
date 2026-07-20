@@ -62,9 +62,13 @@ export async function runMigrations(): Promise<MigrationStatus> {
     return { phase: 'complete', message: 'No migrations needed' };
   } catch (error) {
     const appError =
-      error && typeof error === 'object' && 'code' in error
+      error && typeof error === 'object' && 'code' in error && 'userMessage' in error && 'retryable' in error
         ? (error as AppError)
-        : createError('STORAGE_FAILURE', 'Migration failed: ' + (error as Error).message, false);
+        : createError(
+            'STORAGE_FAILURE',
+            'Migration failed: ' + (error instanceof Error ? error.message : String(error)),
+            false,
+          );
     return { phase: 'error', error: appError };
   }
 }

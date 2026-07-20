@@ -99,6 +99,8 @@ export async function queryCards(query: {
   type?: string;
   status?: string;
   tagIds?: string[];
+  sourceDomain?: string;
+  search?: string;
   cursor?: string;
   limit: number;
 }): Promise<{ cards: Card[]; nextCursor?: string; total: number }> {
@@ -149,6 +151,7 @@ export async function reviseCard(command: {
   cardId: string;
   expectedRevision: number;
   patch: Partial<Card>;
+  confirmationToken?: string;
 }): Promise<Card> {
   const card = await db.cards.get(command.cardId);
   if (!card) {
@@ -266,7 +269,7 @@ export async function getDueCards(query: {
   limit: number;
   includeNew: boolean;
   maxNew: number;
-}): Promise<Array<{ cardId: string; priority: string }>> {
+}): Promise<{ cards: Array<{ cardId: string; priority: string }> }> {
   const now = nowIso();
 
   // Get overdue and due cards
@@ -295,7 +298,7 @@ export async function getDueCards(query: {
     }
   }
 
-  return results;
+  return { cards: results };
 }
 
 /**
@@ -380,7 +383,7 @@ export async function getSourcePages(query: {
     domain: string;
     cardCount: number;
     inboxCount: number;
-    lastCapturedAt: string;
+    lastSeenAt: string;
   }>;
   nextCursor?: string;
 }> {
@@ -406,7 +409,7 @@ export async function getSourcePages(query: {
         domain: page.domain,
         cardCount: uniqueCardIds.size,
         inboxCount: 0, // Inbox counting handled separately
-        lastCapturedAt: page.lastSeenAt,
+        lastSeenAt: page.lastSeenAt,
       };
     }),
   );

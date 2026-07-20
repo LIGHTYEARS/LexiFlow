@@ -11,6 +11,14 @@ export const MessageEnvelopeSchema = z.object({
   requestId: z.string().uuid(),
   tabId: z.number().int().optional(),
   occurredAt: z.string().datetime(),
+  /**
+   * The envelope validates structure only; the payload is intentionally
+   * `unknown` here. Payload-specific validation happens at the handler level —
+   * each message handler is responsible for narrowing and validating its own
+   * expected payload type against a dedicated schema. This keeps the envelope
+   * generic and avoids coupling the transport layer to any single message's
+   * payload shape.
+   */
   payload: z.unknown(),
 });
 
@@ -105,8 +113,13 @@ export const MAX_MESSAGE_PAYLOAD_BYTES = 64 * 1024;
 /**
  * Validate an incoming message envelope.
  * Returns the parsed envelope or throws with INVALID_INPUT.
+ *
+ * The payload type is `unknown` by design — the envelope only validates its
+ * own structure (type, requestId, etc.) and never the payload contents.
+ * Handlers must narrow the payload to their expected type and validate it
+ * against a dedicated schema before use.
  */
-export function validateEnvelope(raw: unknown): MessageEnvelope {
+export function validateEnvelope(raw: unknown): MessageEnvelope<string, unknown> {
   const result = MessageEnvelopeSchema.safeParse(raw);
   if (!result.success) {
     throw createError(
@@ -115,5 +128,5 @@ export function validateEnvelope(raw: unknown): MessageEnvelope {
       false,
     );
   }
-  return result.data as MessageEnvelope;
+  return result.data as MessageEnvelope<string, unknown>;
 }

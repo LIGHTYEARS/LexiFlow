@@ -24,7 +24,7 @@ export function parseIso(iso: string): Date | null {
  */
 export function isDue(iso: string): boolean {
   const d = parseIso(iso);
-  if (!d) return false;
+  if (!d) throw new Error('Invalid ISO date string: ' + iso);
   return d.getTime() <= Date.now();
 }
 
@@ -42,6 +42,7 @@ export function startOfTodayIso(): string {
  * Format a duration in milliseconds to a human-readable string.
  */
 export function formatDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return '0ms';
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
   return `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`;

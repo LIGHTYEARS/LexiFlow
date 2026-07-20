@@ -43,8 +43,8 @@ describe('canonicalizeUrl', () => {
     );
   });
 
-  it('returns original for invalid URL', () => {
-    expect(canonicalizeUrl('not-a-url')).toBe('not-a-url');
+  it('throws for invalid URL', () => {
+    expect(() => canonicalizeUrl('not-a-url')).toThrow();
   });
 });
 

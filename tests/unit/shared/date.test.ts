@@ -30,8 +30,8 @@ describe('isDue', () => {
     expect(isDue('2099-01-01T00:00:00.000Z')).toBe(false);
   });
 
-  it('returns false for invalid', () => {
-    expect(isDue('invalid')).toBe(false);
+  it('throws for invalid', () => {
+    expect(() => isDue('invalid')).toThrow();
   });
 });
 

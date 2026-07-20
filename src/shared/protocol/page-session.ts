@@ -23,7 +23,7 @@ export function createPageSessionRef(
     tabId,
     frameId: 0,
     documentId: documentId || crypto.randomUUID(),
-    urlAtCapture: url.split('#')[0], // Remove fragment for comparison
+    urlAtCapture: url.split('#')[0] || url, // Remove fragment for comparison
   };
 }
 
@@ -37,7 +37,7 @@ export function isPageSessionCurrent(
   currentUrl: string,
 ): boolean {
   if (session.tabId !== currentTabId) return false;
-  if (session.urlAtCapture !== currentUrl.split('#')[0]) return false;
+  if (session.urlAtCapture !== (currentUrl.split('#')[0] || currentUrl)) return false;
   return true;
 }
 

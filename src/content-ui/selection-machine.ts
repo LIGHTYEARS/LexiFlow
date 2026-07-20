@@ -45,6 +45,16 @@ export type SelectionUiEvent =
 export const selectionMachine = createMachine({
   id: 'selectionUi',
   initial: 'idle',
+  /**
+   * Initial context.
+   *
+   * The `as` assertions below are required by XState v5's type inference.
+   * When a context field is initialised to `null`, the inferred literal type
+   * (`null`) would otherwise collapse the context type so that subsequent
+   * `assign` actions and state readers see only `null`. Asserting the full
+   * union type (e.g. `SelectionSnapshot | null`) ensures the machine's
+   * context is correctly typed throughout.
+   */
   context: {
     snapshot: null as SelectionSnapshot | null,
     context: null as ContextEvidence | null,
@@ -58,7 +68,7 @@ export const selectionMachine = createMachine({
         VALID_SELECTION: {
           target: 'stabilizing',
           actions: assign({
-            snapshot: ({ event }) => (event as any).snapshot, // eslint-disable-line @typescript-eslint/no-explicit-any
+            snapshot: ({ event }) => event.type === 'VALID_SELECTION' ? event.snapshot : null,
             revision: ({ context }) => context.revision + 1,
           }),
         },
@@ -74,7 +84,7 @@ export const selectionMachine = createMachine({
         VALID_SELECTION: {
           target: 'stabilizing',
           actions: assign({
-            snapshot: ({ event }) => (event as any).snapshot, // eslint-disable-line @typescript-eslint/no-explicit-any
+            snapshot: ({ event }) => event.type === 'VALID_SELECTION' ? event.snapshot : null,
             revision: ({ context }) => context.revision + 1,
           }),
         },
@@ -104,7 +114,7 @@ export const selectionMachine = createMachine({
         CONTEXT_READY: {
           target: 'explaining',
           actions: assign({
-            context: ({ event }) => (event as any).context, // eslint-disable-line @typescript-eslint/no-explicit-any
+            context: ({ event }) => event.type === 'CONTEXT_READY' ? event.context : null,
           }),
         },
         CANCEL: 'cancelled',
@@ -118,7 +128,7 @@ export const selectionMachine = createMachine({
         EXPLAIN_FAILED: {
           target: 'failure',
           actions: assign({
-            error: ({ event }) => (event as any).error, // eslint-disable-line @typescript-eslint/no-explicit-any
+            error: ({ event }) => event.type === 'EXPLAIN_FAILED' ? event.error : null,
           }),
         },
         CANCEL: 'cancelled',

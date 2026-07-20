@@ -1,4 +1,5 @@
 import type { AppResult } from '../protocol/envelope';
+import type { UserSettings } from '@infra/storage/settings-schema';
 
 /**
  * ProtocolMap defines all typed messages between extension surfaces.
@@ -137,9 +138,16 @@ export type SaveCaptureResult = {
   message: string;
 };
 
+export type DedupSuggestion = {
+  candidateCardId: string;
+  confidence: 'exact' | 'likely_same' | 'possibly_related' | 'insufficient_context';
+  relationType?: string;
+  rationale?: string;
+};
+
 export type DedupPreview = {
   captureId: string;
-  suggestions: unknown[];
+  suggestions: DedupSuggestion[];
 };
 
 export type ApplyDecisionCommand = {
@@ -154,9 +162,15 @@ export type InboxBatchPreviewCommand = {
   proposedAction: string;
 };
 
+export type InboxBatchItem = {
+  itemId: string;
+  action: string;
+  summary: string;
+};
+
 export type InboxBatchPreview = {
   previewId: string;
-  items: unknown[];
+  items: InboxBatchItem[];
   riskSummary: string;
 };
 
@@ -165,9 +179,16 @@ export type InboxBatchApplyCommand = {
   confirmationToken: string;
 };
 
+export type InboxBatchResultItem = {
+  itemId: string;
+  success: boolean;
+  error?: string;
+  cardId?: string;
+};
+
 export type InboxBatchResult = {
   batchId: string;
-  results: unknown[];
+  results: InboxBatchResultItem[];
 };
 
 export type SearchCommand = {
@@ -177,10 +198,25 @@ export type SearchCommand = {
   limit?: number;
 };
 
+export type SearchResultItem = {
+  cardId: string;
+  headword: string;
+  type: 'word' | 'phrase' | 'sentence' | 'technical_term';
+  excerpt?: string;
+  matchFields?: string[];
+};
+
 export type SearchResult = {
-  items: unknown[];
+  items: SearchResultItem[];
   nextCursor?: string;
   total: number;
+};
+
+export type CardReviewState = {
+  dueAt?: string;
+  state?: 'new' | 'learning' | 'review' | 'relearning';
+  stability?: number;
+  difficulty?: number;
 };
 
 export type CardDetail = {
@@ -188,12 +224,17 @@ export type CardDetail = {
   type: string;
   status: string;
   headword: string;
-  explanations: unknown[];
-  examples: unknown[];
-  sources: unknown[];
-  tags: unknown[];
-  relations: unknown[];
-  reviewState?: unknown;
+  explanations: Array<{ value: string; origin: string }>;
+  examples: Array<{ value: string; origin: string }>;
+  sources: Array<{
+    sourceCaptureId: string;
+    role: string;
+    pageTitle?: string;
+    url?: string;
+  }>;
+  tags: Array<{ id: string; name: string }>;
+  relations: Array<{ cardId: string; type: string; direction?: string }>;
+  reviewState?: CardReviewState;
   revision: number;
   createdAt: string;
   updatedAt: string;
@@ -217,9 +258,24 @@ export type ApplyPatchCommand = {
   confirmationToken?: string;
 };
 
+export type SourcePageSummary = {
+  id: string;
+  url: string;
+  title: string;
+  domain: string;
+  lastCapturedAt?: string;
+};
+
+export type SourcePageCard = {
+  cardId: string;
+  headword: string;
+  type: 'word' | 'phrase' | 'sentence' | 'technical_term';
+  role: 'origin' | 'additional_context' | 'example';
+};
+
 export type SourcePageResult = {
-  page: unknown;
-  cards: unknown[];
+  page: SourcePageSummary;
+  cards: SourcePageCard[];
   inboxCount: number;
 };
 
@@ -255,10 +311,17 @@ export type ReviewItem = {
   mode: string;
 };
 
+export type ReviewRevealContext = {
+  sentenceContaining?: string;
+  paragraphExcerpt?: string;
+  pageTitle?: string;
+  url?: string;
+};
+
 export type ReviewReveal = {
   attemptId: string;
   answer: string;
-  context?: unknown;
+  context?: ReviewRevealContext;
 };
 
 export type ReviewRating = 'again' | 'hard' | 'good' | 'easy';
@@ -287,16 +350,30 @@ export type AnnotateErrorCommand = {
   note?: string;
 };
 
+export type RebuildStateInfo = {
+  dueAt: string;
+  state: 'new' | 'learning' | 'review' | 'relearning';
+  stability: number;
+  difficulty: number;
+};
+
 export type RebuildReport = {
   cardId: string;
   eventsReplayed: number;
   driftDetected: boolean;
-  newState?: unknown;
+  newState?: RebuildStateInfo;
 }[];
+
+export type FsrsImpact = {
+  cardId: string;
+  currentDueAt: string;
+  newDueAt: string;
+  rating: 'again' | 'hard' | 'good' | 'easy';
+};
 
 export type FsrsImpactPreview = {
   previewId: string;
-  impacts: unknown[];
+  impacts: FsrsImpact[];
   summary: string;
 };
 
@@ -336,17 +413,14 @@ export type SitePolicyView = {
   autoExplain: boolean;
 };
 
-export type UserSettingsView = {
-  schemaVersion: number;
-  selection: { autoExplain: boolean; disabledSites: string[] };
-  automation: {
-    skipExactDuplicate: boolean;
-    appendExactContext: boolean;
-    newCaptureDestination: string;
-    requireConfirmationForAllWrites: boolean;
-  };
-  review: { dailyReviewLimit: number; dailyNewLimit: number };
-  model: { baseUrl: string; hasCredential: boolean; taskModels: Record<string, string> };
+/**
+ * User settings view — derived from the stored settings schema but with
+ * `credentialRef` stripped (security: never expose credential references
+ * to content scripts or extension UI) and a derived `hasCredential` flag
+ * added so callers know whether a credential is configured.
+ */
+export type UserSettingsView = Omit<UserSettings, 'model'> & {
+  model: Omit<UserSettings['model'], 'credentialRef'> & { hasCredential: boolean };
 };
 
 export type SettingsUpdateCommand = {

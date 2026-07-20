@@ -1,5 +1,8 @@
 import type { Card } from '@domain/card/card.model';
 import type { SourceCapture } from '@domain/source/source.model';
+import type { InboxItem } from '@domain/inbox/inbox.model';
+import type { ScheduleSnapshot } from '@domain/review/review.model';
+import type { ErrorType } from '@domain/error/error.model';
 
 /**
  * Repository interface — the only way to read/write domain data.
@@ -8,7 +11,7 @@ import type { SourceCapture } from '@domain/source/source.model';
  */
 export interface KnowledgeRepository {
   // ── Capture & Source ──
-  saveCapture(command: SaveCaptureCommand): Promise<SaveCaptureResult>;
+  saveCapture?(command: SaveCaptureCommand): Promise<SaveCaptureResult>;
   getSourceCapture(id: string): Promise<SourceCapture | undefined>;
 
   // ── Cards ──
@@ -18,25 +21,29 @@ export interface KnowledgeRepository {
 
   // ── Inbox ──
   getInboxItems(query: { status?: string; limit?: number; cursor?: string }): Promise<{
-    items: unknown[];
+    items: InboxItem[];
     nextCursor?: string;
   }>;
 
   // ── Review ──
-  recordReview(command: RecordReviewCommand): Promise<ReviewResult>;
+  recordReview?(command: RecordReviewCommand): Promise<ReviewResult>;
   getDueCards(query: DueCardsQuery): Promise<DueCardsResult>;
 
   // ── Organization ──
-  applyOrganizationPlan(command: ApplyPlanCommand): Promise<OperationResult>;
+  applyOrganizationPlan?(command: ApplyPlanCommand): Promise<OperationResult>;
 }
 
 // ── Command & Result Types ──
 
 export type SaveCaptureCommand = {
   requestId: string;
-  selectionSnapshotId: string;
+  selectedText: string;
+  context: SourceCapture['context'];
+  pageUrl: string;
+  pageTitle: string;
+  siteName?: string;
+  domain: string;
   requestedAction: 'save' | 'save-to-inbox';
-  idempotencyKey: string;
 };
 
 export type SaveCaptureResult = {
@@ -65,7 +72,7 @@ export type CardQueryResult = {
 export type ReviseCardCommand = {
   cardId: string;
   expectedRevision: number;
-  patch: Record<string, unknown>;
+  patch: Partial<Card>;
   confirmationToken?: string;
 };
 
@@ -76,8 +83,11 @@ export type RecordReviewCommand = {
   rating: 'again' | 'hard' | 'good' | 'easy';
   mode: string;
   expectedSequence: number;
+  previousStateHash: string;
+  resultingState: ScheduleSnapshot['state'];
   answer?: string;
   durationMs?: number;
+  confirmedErrorTypes?: ErrorType[];
 };
 
 export type ReviewResult = {
@@ -93,12 +103,19 @@ export type DueCardsQuery = {
 };
 
 export type DueCardsResult = {
-  cards: Array<{ cardId: string; attemptId: string; priority: string }>;
+  cards: Array<{ cardId: string; priority: string }>;
+};
+
+export type PlanOperation = {
+  type: string;
+  entityId: string;
+  action: string;
+  data?: unknown;
 };
 
 export type ApplyPlanCommand = {
   requestId: string;
-  operations: unknown[];
+  operations: PlanOperation[];
   confirmationToken?: string;
 };
 

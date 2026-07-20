@@ -32,50 +32,50 @@
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| U-01 | `src/domain/card/card.model.ts` | 64 | `WordContentSchema.senses` uses `z.array(z.unknown())` — zero type safety for word senses | pending |
-| U-02 | `src/domain/inbox/inbox.model.ts` | 12 | `InboxItemSchema.draft` uses `z.unknown().optional()` — no validation or type safety | pending |
-| U-03 | `src/domain/inbox/inbox.model.ts` | 13 | `InboxItemSchema.suggestions` uses `z.array(z.unknown()).optional()` — no validation | pending |
+| U-01 | `src/domain/card/card.model.ts` | 64 | `WordContentSchema.senses` uses `z.array(z.unknown())` — zero type safety for word senses | fixed |
+| U-02 | `src/domain/inbox/inbox.model.ts` | 12 | `InboxItemSchema.draft` uses `z.unknown().optional()` — no validation or type safety | fixed |
+| U-03 | `src/domain/inbox/inbox.model.ts` | 13 | `InboxItemSchema.suggestions` uses `z.array(z.unknown()).optional()` — no validation | fixed |
 
 ### 1.2 Infrastructure Layer
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| U-04 | `src/infrastructure/db/database.ts` | 47 | `reviewSessions` table typed as `Table<Record<string, unknown>, string>` — no ReviewSession model | pending |
-| U-05 | `src/infrastructure/db/database.ts` | 53 | `practiceSessions` table typed as `Table<Record<string, unknown>, string>` — untyped | pending |
-| U-06 | `src/infrastructure/db/database.ts` | 54 | `practiceItems` table typed as `Table<Record<string, unknown>, string>` — untyped | pending |
-| U-07 | `src/infrastructure/db/database.ts` | 55 | `practiceAttempts` table typed as `Table<Record<string, unknown>, string>` — untyped | pending |
-| U-08 | `src/infrastructure/db/database.ts` | 58 | `operationLogs` table typed as `Table<Record<string, unknown>, string>` — untyped | pending |
-| U-09 | `src/infrastructure/db/database.ts` | 59 | `modelRunMetadata` table typed as `Table<Record<string, unknown>, string>` — untyped | pending |
-| U-10 | `src/infrastructure/db/database.ts` | 62 | `searchOutbox` table typed as `Table<Record<string, unknown>, number>` — untyped | pending |
-| U-11 | `src/infrastructure/db/database.ts` | 63 | `meta` table has `value: unknown` — no type safety on metadata values | pending |
-| U-12 | `src/infrastructure/db/repository.ts` | 21 | `getInboxItems` returns `items: unknown[]` instead of `InboxItem[]` | pending |
-| U-13 | `src/infrastructure/db/repository.ts` | 68 | `ReviseCardCommand.patch` is `Record<string, unknown>` instead of `Partial<Card>` | pending |
-| U-14 | `src/infrastructure/db/repository.ts` | 101 | `ApplyPlanCommand.operations` is `unknown[]` — no operation type defined | pending |
-| U-15 | `src/infrastructure/db/migrations.ts` | 67 | `(error as Error).message` — casts `unknown` to `Error` without `instanceof` check | pending |
-| U-16 | `src/infrastructure/storage/settings-gateway.ts` | 35 | `result[SETTINGS_KEY]` is implicitly `any` from Chrome storage API | pending |
-| U-17 | `src/infrastructure/storage/settings-gateway.ts` | 157 | `result[CREDENTIALS_KEY] as Credential` — no runtime validation against `CredentialSchema` | pending |
-| U-18 | `src/infrastructure/storage/settings-gateway.ts` | 173 | `result[CREDENTIALS_KEY]` is implicitly `any` | pending |
-| U-19 | `src/infrastructure/storage/settings-gateway.ts` | 196 | `result[SCHEMA_VERSION_KEY]` is implicitly `any` — string values returned as `number` | pending |
-| U-20 | `src/infrastructure/messaging/message-registry.ts` | 8-12 | `MessageHandler<TInput=unknown, TOutput=unknown>` defaults lose all type info | pending |
-| U-21 | `src/infrastructure/messaging/message-registry.ts` | 19 | `Map<string, MessageHandler>` uses default `unknown` generics | pending |
-| U-22 | `src/infrastructure/messaging/message-registry.ts` | 55 | `handle` returns `Promise<AppResult<unknown>>` — actual output type lost | pending |
+| U-04 | `src/infrastructure/db/database.ts` | 47 | `reviewSessions` table typed as `Table<Record<string, unknown>, string>` — no ReviewSession model | fixed |
+| U-05 | `src/infrastructure/db/database.ts` | 53 | `practiceSessions` table typed as `Table<Record<string, unknown>, string>` — untyped | fixed |
+| U-06 | `src/infrastructure/db/database.ts` | 54 | `practiceItems` table typed as `Table<Record<string, unknown>, string>` — untyped | fixed |
+| U-07 | `src/infrastructure/db/database.ts` | 55 | `practiceAttempts` table typed as `Table<Record<string, unknown>, string>` — untyped | fixed |
+| U-08 | `src/infrastructure/db/database.ts` | 58 | `operationLogs` table typed as `Table<Record<string, unknown>, string>` — untyped | fixed |
+| U-09 | `src/infrastructure/db/database.ts` | 59 | `modelRunMetadata` table typed as `Table<Record<string, unknown>, string>` — untyped | fixed |
+| U-10 | `src/infrastructure/db/database.ts` | 62 | `searchOutbox` table typed as `Table<Record<string, unknown>, number>` — untyped | fixed |
+| U-11 | `src/infrastructure/db/database.ts` | 63 | `meta` table has `value: unknown` — no type safety on metadata values | fixed |
+| U-12 | `src/infrastructure/db/repository.ts` | 21 | `getInboxItems` returns `items: unknown[]` instead of `InboxItem[]` | fixed |
+| U-13 | `src/infrastructure/db/repository.ts` | 68 | `ReviseCardCommand.patch` is `Record<string, unknown>` instead of `Partial<Card>` | fixed |
+| U-14 | `src/infrastructure/db/repository.ts` | 101 | `ApplyPlanCommand.operations` is `unknown[]` — no operation type defined | fixed |
+| U-15 | `src/infrastructure/db/migrations.ts` | 67 | `(error as Error).message` — casts `unknown` to `Error` without `instanceof` check | fixed |
+| U-16 | `src/infrastructure/storage/settings-gateway.ts` | 35 | `result[SETTINGS_KEY]` is implicitly `any` from Chrome storage API | fixed |
+| U-17 | `src/infrastructure/storage/settings-gateway.ts` | 157 | `result[CREDENTIALS_KEY] as Credential` — no runtime validation against `CredentialSchema` | fixed |
+| U-18 | `src/infrastructure/storage/settings-gateway.ts` | 173 | `result[CREDENTIALS_KEY]` is implicitly `any` | fixed |
+| U-19 | `src/infrastructure/storage/settings-gateway.ts` | 196 | `result[SCHEMA_VERSION_KEY]` is implicitly `any` — string values returned as `number` | fixed |
+| U-20 | `src/infrastructure/messaging/message-registry.ts` | 8-12 | `MessageHandler<TInput=unknown, TOutput=unknown>` defaults lose all type info | fixed |
+| U-21 | `src/infrastructure/messaging/message-registry.ts` | 19 | `Map<string, MessageHandler>` uses default `unknown` generics | fixed |
+| U-22 | `src/infrastructure/messaging/message-registry.ts` | 55 | `handle` returns `Promise<AppResult<unknown>>` — actual output type lost | fixed |
 
 ### 1.3 Shared & Protocol Layer
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| U-23 | `src/shared/protocol/envelope.ts` | 14 | `payload: z.unknown()` — message payloads never validated or narrowed at boundary | pending |
-| U-24 | `src/shared/protocol/envelope.ts` | 109 | `validateEnvelope` returns `MessageEnvelope` with default `unknown` payload | pending |
-| U-25 | `src/shared/protocol/protocol-map.ts` | 142 | `suggestions: unknown[]` in `DedupPreview` — untyped array | pending |
-| U-26 | `src/shared/protocol/protocol-map.ts` | 159 | `items: unknown[]` in `InboxBatchPreview` — untyped array | pending |
-| U-27 | `src/shared/protocol/protocol-map.ts` | 170 | `results: unknown[]` in `InboxBatchResult` — untyped array | pending |
-| U-28 | `src/shared/protocol/protocol-map.ts` | 181 | `items: unknown[]` in `SearchResult` — untyped array | pending |
-| U-29 | `src/shared/protocol/protocol-map.ts` | 191-196 | `explanations`, `examples`, `sources`, `tags`, `relations` all `unknown[]` in `CardDetail` | pending |
-| U-30 | `src/shared/protocol/protocol-map.ts` | 196 | `reviewState?: unknown` in `CardDetail` — untyped | pending |
-| U-31 | `src/shared/protocol/protocol-map.ts` | 210 | `diff: unknown[]` in `PatchPreview` — untyped | pending |
-| U-32 | `src/shared/protocol/protocol-map.ts` | 221-222 | `page: unknown` and `cards: unknown[]` in `SourcePageResult` — untyped | pending |
-| U-33 | `src/shared/protocol/protocol-map.ts` | 261 | `context?: unknown` in `ReviewReveal` — untyped | pending |
-| U-34 | `src/shared/protocol/protocol-map.ts` | 294 | `newState?: unknown` in `RebuildReport` — untyped | pending |
+| U-23 | `src/shared/protocol/envelope.ts` | 14 | `payload: z.unknown()` — message payloads never validated or narrowed at boundary | fixed |
+| U-24 | `src/shared/protocol/envelope.ts` | 109 | `validateEnvelope` returns `MessageEnvelope` with default `unknown` payload | fixed |
+| U-25 | `src/shared/protocol/protocol-map.ts` | 142 | `suggestions: unknown[]` in `DedupPreview` — untyped array | fixed |
+| U-26 | `src/shared/protocol/protocol-map.ts` | 159 | `items: unknown[]` in `InboxBatchPreview` — untyped array | fixed |
+| U-27 | `src/shared/protocol/protocol-map.ts` | 170 | `results: unknown[]` in `InboxBatchResult` — untyped array | fixed |
+| U-28 | `src/shared/protocol/protocol-map.ts` | 181 | `items: unknown[]` in `SearchResult` — untyped array | fixed |
+| U-29 | `src/shared/protocol/protocol-map.ts` | 191-196 | `explanations`, `examples`, `sources`, `tags`, `relations` all `unknown[]` in `CardDetail` | fixed |
+| U-30 | `src/shared/protocol/protocol-map.ts` | 196 | `reviewState?: unknown` in `CardDetail` — untyped | fixed |
+| U-31 | `src/shared/protocol/protocol-map.ts` | 323 | `context?: ReviewRevealContext` in `ReviewReveal` — typed with `sentenceContaining?`, `paragraphExcerpt?`, `pageTitle?`, `url?` | fixed |
+| U-32 | `src/shared/protocol/protocol-map.ts` | 363 | `newState?: RebuildStateInfo` in `RebuildReport` — typed with `dueAt`, `state`, `stability`, `difficulty` | fixed |
+| U-33 | `src/shared/protocol/protocol-map.ts` | 276-277 | `page: SourcePageSummary` and `cards: SourcePageCard[]` in `SourcePageResult` — typed | fixed |
+| U-34 | `src/shared/protocol/protocol-map.ts` | 375 | `impacts: FsrsImpact[]` in `FsrsImpactPreview` — typed with `cardId`, `currentDueAt`, `newDueAt`, `rating` enum | fixed |
 
 ---
 
@@ -85,47 +85,47 @@
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| I-01 | `src/domain/card/card.model.ts` | 10-46 | `ProvenancedText` shape duplicated inline 4 times instead of referencing `types.ts` definition | pending |
-| I-02 | `src/domain/card/card.model.ts` | 12-18, 23-29, 32-37, 41-46 | Enums (`CardType`, `ContentOrigin`, `CardStatus`) redefined inline with `z.enum()` instead of referencing `types.ts` | pending |
-| I-03 | `src/domain/card/card.model.ts` | 88-93 | `CardContentSchema` discriminated union defined but **never attached** to `CardSchema` — cards have no type-specific content | pending |
-| I-04 | `src/domain/source/source.model.ts` | 36 | `SourceCaptureSchema.context.url` uses `z.string()` but `SourcePageSchema.url` uses `z.string().url()` — inconsistent URL validation | pending |
-| I-05 | `src/domain/source/source.model.ts` | 37 | `SourceCaptureSchema.context.canonicalUrl` uses `z.string().optional()` — inconsistent with `SourcePageSchema.url` | pending |
-| I-06 | `src/domain/source/source.model.ts` | 45 | `SourceCaptureSchema.captureRequestId` uses `z.string()` (no UUID) while `id` and `pageId` use `z.string().uuid()` | pending |
-| I-07 | `src/domain/review/review.model.ts` | 14-15 | `elapsedDays`/`scheduledDays` use `z.number()` without `.int()` but `reps`/`lapses` use `.int()` — inconsistent | pending |
-| I-08 | `src/domain/review/review.model.ts` | 53 | `ScheduleSnapshotSchema.lastSequence` uses `.int()` without `.positive()` but `ReviewEventSchema.sequence` uses `.positive()` | pending |
-| I-09 | `src/domain/review/review.model.ts` | 75-76 | `suggestedErrorTypes`/`confirmedErrorTypes` use `z.array(z.string())` instead of `z.array(z.enum(ERROR_TYPES))` | pending |
-| I-10 | `src/domain/review/review.model.ts` | 72 | `referenceAnswerRef` uses `z.string().optional()` without UUID validation | pending |
-| I-11 | `src/domain/review/review.model.ts` | 73 | `durationMs` uses `.int().optional()` without `.positive()` — duration cannot be zero/negative | pending |
-| I-12 | `src/domain/error/error.model.ts` | 13 | `ErrorAnnotationSchema.type` uses `z.string()` instead of `z.enum(ERROR_TYPES)` — allows any string | pending |
-| I-13 | `src/domain/error/error.model.ts` | 14 | `ErrorAnnotationSchema.userOverride` uses `z.string().optional()` — should be `ErrorType` enum | pending |
-| I-14 | `src/domain/tag/tag.model.ts` | 25-35 | `CardRelationSchema` redefines `CardRelationType`, `RelationDirection`, `ContentOrigin` inline with `z.enum()` | pending |
-| I-15 | `src/domain/types.ts` | 38 | `ProvenancedText.sourceCaptureId`/`modelRunId` typed as plain `string` but schema validates as `.uuid()` — TS type wider than schema permits | pending |
+| I-01 | `src/domain/card/card.model.ts` | 8-15, 77-81 | Shared `ProvenancedTextSchema` used for `headword`, `explanations`, `examples`, `notes` — no inline duplication | fixed |
+| I-02 | `src/domain/card/card.model.ts` | 10, 73, 75 | `// Keep in sync with ... in ../types.ts` comments on `z.enum` calls for `ContentOrigin`, `CardType`, `CardStatus` | fixed |
+| I-03 | `src/domain/card/card.model.ts` | 57-62, 82 | `CardContentSchema` defined before `CardSchema` and attached via `content: CardContentSchema.optional()` | fixed |
+| I-04 | `src/domain/source/source.model.ts` | 36 | `SourceCaptureSchema.context.url` uses `z.string().url()` — consistent with `SourcePageSchema.url` | fixed |
+| I-05 | `src/domain/source/source.model.ts` | 37 | `SourceCaptureSchema.context.canonicalUrl` uses `z.string().url().optional()` — consistent with `SourcePageSchema.url` | fixed |
+| I-06 | `src/domain/source/source.model.ts` | 45 | `SourceCaptureSchema.captureRequestId` uses `z.string().uuid()` — consistent with `id` and `pageId` | fixed |
+| I-07 | `src/domain/review/review.model.ts` | 14-15 | `elapsedDays`/`scheduledDays` use `z.number()` without `.int()` but `reps`/`lapses` use `.int()` — inconsistent | fixed |
+| I-08 | `src/domain/review/review.model.ts` | 53 | `ScheduleSnapshotSchema.lastSequence` uses `.int()` without `.positive()` but `ReviewEventSchema.sequence` uses `.positive()` | fixed |
+| I-09 | `src/domain/review/review.model.ts` | 75-76 | `suggestedErrorTypes`/`confirmedErrorTypes` use `z.array(z.string())` instead of `z.array(z.enum(ERROR_TYPES))` | fixed |
+| I-10 | `src/domain/review/review.model.ts` | 72 | `referenceAnswerRef` uses `z.string().optional()` without UUID validation | fixed |
+| I-11 | `src/domain/review/review.model.ts` | 73 | `durationMs` uses `.int().optional()` without `.positive()` — duration cannot be zero/negative | fixed |
+| I-12 | `src/domain/error/error.model.ts` | 13 | `ErrorAnnotationSchema.type` uses `z.string()` instead of `z.enum(ERROR_TYPES)` — allows any string | fixed |
+| I-13 | `src/domain/error/error.model.ts` | 14 | `ErrorAnnotationSchema.userOverride` uses `z.string().optional()` — should be `ErrorType` enum | fixed |
+| I-14 | `src/domain/tag/tag.model.ts` | 25-35 | `CardRelationSchema` redefines `CardRelationType`, `RelationDirection`, `ContentOrigin` inline with `z.enum()` | fixed |
+| I-15 | `src/domain/types.ts` | 38 | `ProvenancedText.sourceCaptureId`/`modelRunId` typed as plain `string` but schema validates as `.uuid()` — TS type wider than schema permits | fixed |
 
 ### 2.2 Infrastructure Layer
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| I-16 | `src/infrastructure/db/repository.ts` | 9-31 | `KnowledgeRepository` interface declares methods (`saveCapture`, `recordReview`, `applyOrganizationPlan`) not implemented by any class | pending |
-| I-17 | `src/infrastructure/db/repository.ts` | 42-47 | `SaveCaptureResult` and `SaveCaptureOutput` (transactions.ts) are duplicate types with identical shapes | pending |
-| I-18 | `src/infrastructure/db/repository.ts` | 35-40 | `SaveCaptureCommand` has `selectionSnapshotId`/`idempotencyKey` but `SaveCaptureInput` (transactions.ts) has completely different fields | pending |
-| I-19 | `src/infrastructure/db/repository.ts` | 72-81 | `RecordReviewCommand` missing `previousStateHash`, `resultingState`, `confirmedErrorTypes` that `RecordReviewInput` requires | pending |
-| I-20 | `src/infrastructure/db/repository.ts` | 96 | `DueCardsResult.cards` includes `attemptId` but implementation does not return it | pending |
-| I-21 | `src/infrastructure/db/repository-impl.ts` | 98-104 | `queryCards` parameter type missing `sourceDomain` and `search` from `CardQuery` interface | pending |
-| I-22 | `src/infrastructure/db/repository-impl.ts` | 148-152 | `reviseCard` uses `patch: Partial<Card>` but interface uses `Record<string, unknown>`; missing `confirmationToken` | pending |
-| I-23 | `src/infrastructure/db/repository-impl.ts` | 220-241 | `getInboxItems` returns `InboxItem[]` but interface declares `unknown[]` | pending |
-| I-24 | `src/infrastructure/db/repository-impl.ts` | 265-299 | `getDueCards` returns bare array without `attemptId`, but interface wraps in object with `attemptId` | pending |
-| I-25 | `src/infrastructure/db/transactions.ts` | 346 | `mode: input.mode as ReviewEvent['mode']` — `input.mode` is `string` cast to enum without validation | pending |
-| I-26 | `src/infrastructure/db/transactions.ts` | 371 | `parameterSetId: input.resultingState.schedulerVersion` — assigns `schedulerVersion` to `parameterSetId` (semantic mismatch) | pending |
-| I-27 | `src/infrastructure/storage/settings-schema.ts` | 8-30 | `UserSettingsSchema` and `UserSettingsView` (protocol-map.ts) have different structures (e.g., `hasCredential` in view not in schema) | pending |
-| I-28 | `src/infrastructure/db/repository-impl.ts` | 408-409 | `getSourcePages` maps `lastSeenAt` to `lastCapturedAt` — misleading field name | pending |
+| I-16 | `src/infrastructure/db/repository.ts` | 9-31 | `KnowledgeRepository` interface declares methods (`saveCapture`, `recordReview`, `applyOrganizationPlan`) not implemented by any class | fixed |
+| I-17 | `src/infrastructure/db/repository.ts` | 42-47 | `SaveCaptureResult` and `SaveCaptureOutput` (transactions.ts) are duplicate types with identical shapes | fixed |
+| I-18 | `src/infrastructure/db/repository.ts` | 35-40 | `SaveCaptureCommand` has `selectionSnapshotId`/`idempotencyKey` but `SaveCaptureInput` (transactions.ts) has completely different fields | fixed |
+| I-19 | `src/infrastructure/db/repository.ts` | 72-81 | `RecordReviewCommand` missing `previousStateHash`, `resultingState`, `confirmedErrorTypes` that `RecordReviewInput` requires | fixed |
+| I-20 | `src/infrastructure/db/repository.ts` | 96 | `DueCardsResult.cards` includes `attemptId` but implementation does not return it | fixed |
+| I-21 | `src/infrastructure/db/repository-impl.ts` | 98-104 | `queryCards` parameter type missing `sourceDomain` and `search` from `CardQuery` interface | fixed |
+| I-22 | `src/infrastructure/db/repository-impl.ts` | 148-152 | `reviseCard` uses `patch: Partial<Card>` but interface uses `Record<string, unknown>`; missing `confirmationToken` | fixed |
+| I-23 | `src/infrastructure/db/repository-impl.ts` | 220-241 | `getInboxItems` returns `InboxItem[]` but interface declares `unknown[]` | fixed |
+| I-24 | `src/infrastructure/db/repository-impl.ts` | 265-299 | `getDueCards` returns bare array without `attemptId`, but interface wraps in object with `attemptId` | fixed |
+| I-25 | `src/infrastructure/db/transactions.ts` | 346 | `mode: input.mode as ReviewEvent['mode']` — `input.mode` is `string` cast to enum without validation | fixed |
+| I-26 | `src/infrastructure/db/transactions.ts` | 371 | `parameterSetId: input.resultingState.schedulerVersion` — assigns `schedulerVersion` to `parameterSetId` (semantic mismatch) | fixed |
+| I-27 | `src/infrastructure/storage/settings-schema.ts` | 8-30 | `UserSettingsSchema` and `UserSettingsView` (protocol-map.ts) have different structures (e.g., `hasCredential` in view not in schema) | fixed |
+| I-28 | `src/infrastructure/db/repository-impl.ts` | 408-409 | `getSourcePages` maps `lastSeenAt` to `lastCapturedAt` — misleading field name | fixed |
 
 ### 2.3 Application Layer
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| I-29 | `src/application/core/handlers.ts` | 38-45 | `settings/get` returns `{ ...settings, model: { ... } }` which includes `credentialRef` — not part of `UserSettingsView` and should never be exposed | pending |
-| I-30 | `src/application/core/handlers.ts` | 134 | `page/summary` handler reads `url` from payload but `PageSummaryQuery` defines field as `pageUrl` — field name mismatch | pending |
-| I-31 | `src/application/core/handlers.ts` | 135-141 | `page/summary` handler returns `url` but `PageSummary` type defines `pageUrl` — consumers get `undefined` | pending |
+| I-29 | `src/application/core/handlers.ts` | 38-45 | `settings/get` returns `{ ...settings, model: { ... } }` which includes `credentialRef` — not part of `UserSettingsView` and should never be exposed | fixed |
+| I-30 | `src/application/core/handlers.ts` | 134 | `page/summary` handler reads `url` from payload but `PageSummaryQuery` defines field as `pageUrl` — field name mismatch | fixed |
+| I-31 | `src/application/core/handlers.ts` | 135-141 | `page/summary` handler returns `url` but `PageSummary` type defines `pageUrl` — consumers get `undefined` | fixed |
 
 ---
 
@@ -135,42 +135,42 @@
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| A-01 | `src/content-ui/selection-machine.ts` | 61 | `(event as any).snapshot` with `eslint-disable` — should narrow to `VALID_SELECTION` event type | pending |
-| A-02 | `src/content-ui/selection-machine.ts` | 77 | `(event as any).snapshot` with `eslint-disable` — same pattern in `stabilizing` state | pending |
-| A-03 | `src/content-ui/selection-machine.ts` | 107 | `(event as any).context` with `eslint-disable` — should narrow to `CONTEXT_READY` event | pending |
-| A-04 | `src/content-ui/selection-machine.ts` | 121 | `(event as any).error` with `eslint-disable` — should narrow to `EXPLAIN_FAILED` event | pending |
-| A-05 | `src/content-ui/selection-machine.ts` | 49-53 | `null as SelectionSnapshot | null` etc. — forces context type inference for XState | pending |
-| A-06 | `src/content-ui/selection-validator.ts` | 112-114 | `container as HTMLElement` — should use `instanceof HTMLElement` for proper narrowing | pending |
-| A-07 | `src/content-ui/selection-validator.ts` | 124-126 | `ancestor as HTMLElement` — same pattern | pending |
-| A-08 | `src/content-ui/context-extractor.ts` | 100 | `(ancestor as HTMLElement)` — same pattern | pending |
-| A-09 | `src/content-ui/context-extractor.ts` | 297-299 | `(range.commonAncestorContainer as HTMLElement)` — same pattern | pending |
-| A-10 | `src/content-ui/context-extractor.ts` | 321-323 | `(range.commonAncestorContainer as HTMLElement)` — same pattern | pending |
-| A-11 | `src/content-ui/context-extractor.ts` | 375 | `const element = node as HTMLElement` — same pattern | pending |
+| A-01 | `src/content-ui/selection-machine.ts` | 61 | `(event as any).snapshot` with `eslint-disable` — should narrow to `VALID_SELECTION` event type | fixed |
+| A-02 | `src/content-ui/selection-machine.ts` | 77 | `(event as any).snapshot` with `eslint-disable` — same pattern in `stabilizing` state | fixed |
+| A-03 | `src/content-ui/selection-machine.ts` | 107 | `(event as any).context` with `eslint-disable` — should narrow to `CONTEXT_READY` event | fixed |
+| A-04 | `src/content-ui/selection-machine.ts` | 121 | `(event as any).error` with `eslint-disable` — should narrow to `EXPLAIN_FAILED` event | fixed |
+| A-05 | `src/content-ui/selection-machine.ts` | 49-53 | `null as SelectionSnapshot | null` etc. — forces context type inference for XState | fixed |
+| A-06 | `src/content-ui/selection-validator.ts` | 112-114 | `container as HTMLElement` — should use `instanceof HTMLElement` for proper narrowing | fixed |
+| A-07 | `src/content-ui/selection-validator.ts` | 124-126 | `ancestor as HTMLElement` — same pattern | fixed |
+| A-08 | `src/content-ui/context-extractor.ts` | 100 | `(ancestor as HTMLElement)` — same pattern | fixed |
+| A-09 | `src/content-ui/context-extractor.ts` | 297-299 | `(range.commonAncestorContainer as HTMLElement)` — same pattern | fixed |
+| A-10 | `src/content-ui/context-extractor.ts` | 321-323 | `(range.commonAncestorContainer as HTMLElement)` — same pattern | fixed |
+| A-11 | `src/content-ui/context-extractor.ts` | 375 | `const element = node as HTMLElement` — same pattern | fixed |
 
 ### 3.2 Infrastructure Layer
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| A-12 | `src/infrastructure/db/migrations.ts` | 64-67 | `error as AppError` — only checks `'code' in error`, not full `AppError` shape | pending |
-| A-13 | `src/infrastructure/db/migrations.ts` | 67 | `(error as Error).message` — casts `unknown` to `Error` without `instanceof` check | pending |
-| A-14 | `src/infrastructure/db/transactions.ts` | 346 | `mode: input.mode as ReviewEvent['mode']` — no runtime validation of enum value | pending |
-| A-15 | `src/infrastructure/messaging/browser-runtime.ts` | 85 | `response as TResponse` — no runtime validation of response shape from `sendMessage` | pending |
-| A-16 | `src/infrastructure/messaging/browser-runtime.ts` | 107 | `response as TResponse` — same issue for `sendMessageToTab` | pending |
-| A-17 | `src/infrastructure/messaging/message-registry.ts` | 31 | `handler as MessageHandler` — discards handler's specific input/output types | pending |
-| A-18 | `src/infrastructure/messaging/message-registry.ts` | 61 | `error as AppError` — assumes `validateEnvelope` always throws `AppError` | pending |
-| A-19 | `src/infrastructure/storage/settings-gateway.ts` | 157 | `result[CREDENTIALS_KEY] as Credential` — no runtime schema validation | pending |
+| A-12 | `src/infrastructure/db/migrations.ts` | 64-67 | `error as AppError` — only checks `'code' in error`, not full `AppError` shape | fixed |
+| A-13 | `src/infrastructure/db/migrations.ts` | 67 | `(error as Error).message` — casts `unknown` to `Error` without `instanceof` check | fixed |
+| A-14 | `src/infrastructure/db/transactions.ts` | 346 | `mode: input.mode as ReviewEvent['mode']` — no runtime validation of enum value | fixed |
+| A-15 | `src/infrastructure/messaging/browser-runtime.ts` | 85 | `response as TResponse` — no runtime validation of response shape from `sendMessage` | fixed |
+| A-16 | `src/infrastructure/messaging/browser-runtime.ts` | 107 | `response as TResponse` — same issue for `sendMessageToTab` | fixed |
+| A-17 | `src/infrastructure/messaging/message-registry.ts` | 31 | `handler as MessageHandler` — discards handler's specific input/output types | fixed |
+| A-18 | `src/infrastructure/messaging/message-registry.ts` | 61 | `error as AppError` — assumes `validateEnvelope` always throws `AppError` | fixed |
+| A-19 | `src/infrastructure/storage/settings-gateway.ts` | 157 | `result[CREDENTIALS_KEY] as Credential` — no runtime schema validation | fixed |
 
 ### 3.3 Application & Entrypoint Layer
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| A-20 | `src/application/core/handlers.ts` | 20 | `payload as { origin: string }` — bypasses type checking on `unknown` payload | pending |
-| A-21 | `src/application/core/handlers.ts` | 50 | `payload as { url: string; tabId?: number }` — bypasses type checking | pending |
-| A-22 | `src/application/core/handlers.ts` | 81 | `payload as { url: string }` — bypasses type checking | pending |
-| A-23 | `src/application/core/handlers.ts` | 93 | `payload as { url: string }` — bypasses type checking | pending |
-| A-24 | `src/application/core/handlers.ts` | 104 | `payload as { destination: string; tabId?: number }` — wider than `ProtocolMap` literal union | pending |
-| A-25 | `src/application/core/handlers.ts` | 118 | `undefined as unknown` — unnecessary assertion; should return `undefined` directly | pending |
-| A-26 | `src/application/core/handlers.ts` | 134 | `payload as { url?: string }` — field name mismatch with `ProtocolMap` | pending |
+| A-20 | `src/application/core/handlers.ts` | 20 | `payload as { origin: string }` — bypasses type checking on `unknown` payload | fixed |
+| A-21 | `src/application/core/handlers.ts` | 50 | `payload as { url: string; tabId?: number }` — bypasses type checking | fixed |
+| A-22 | `src/application/core/handlers.ts` | 81 | `payload as { url: string }` — bypasses type checking | fixed |
+| A-23 | `src/application/core/handlers.ts` | 93 | `payload as { url: string }` — bypasses type checking | fixed |
+| A-24 | `src/application/core/handlers.ts` | 104 | `payload as { destination: string; tabId?: number }` — wider than `ProtocolMap` literal union | fixed |
+| A-25 | `src/application/core/handlers.ts` | 118 | `undefined as unknown` — unnecessary assertion; should return `undefined` directly | fixed |
+| A-26 | `src/application/core/handlers.ts` | 134 | `payload as { url?: string }` — field name mismatch with `ProtocolMap` | fixed |
 
 ---
 
@@ -178,16 +178,16 @@
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| N-01 | `src/shared/protocol/page-session.ts` | 25 | `url.split('#')[0]` can return empty string if URL starts with `#` | pending |
-| N-02 | `src/shared/utils/date.ts` | 25-28 | `isDue` returns `false` for both invalid dates and future dates — indistinguishable | pending |
-| N-03 | `src/shared/utils/date.ts` | 44 | `formatDuration` does not handle `NaN` or negative values | pending |
-| N-04 | `src/shared/utils/url.ts` | 27 | `canonicalizeUrl` returns original URL silently on parse failure | pending |
-| N-05 | `src/shared/utils/url.ts` | 71 | `removeFragment` returns original URL silently on parse failure | pending |
-| N-06 | `src/infrastructure/messaging/browser-runtime.ts` | 43-59 | `JSON.stringify(payload ?? '')` can throw on circular refs or `BigInt` — no try-catch | pending |
-| N-07 | `src/infrastructure/messaging/browser-runtime.ts` | 81 | `throw sizeCheck.error` — `error` is `AppError | undefined` per return type | pending |
-| N-08 | `src/infrastructure/messaging/message-registry.ts` | 67, 73 | `senderCheck.error!` and `sizeCheck.error!` — non-null assertions on optional properties | pending |
-| N-09 | `src/infrastructure/permissions/model-origin-gateway.ts` | 15-18 | `validateModelBaseUrl` returns `{ valid, origin? }` — not a discriminated union; `origin` may be undefined when `valid` is true | pending |
-| N-10 | `src/infrastructure/permissions/model-origin-gateway.ts` | 131-138 | `canMakeModelRequest` returns `{ allowed, error? }` — `error` may be undefined when `allowed` is false | pending |
+| N-01 | `src/shared/protocol/page-session.ts` | 25 | `url.split('#')[0]` can return empty string if URL starts with `#` | fixed |
+| N-02 | `src/shared/utils/date.ts` | 25-28 | `isDue` returns `false` for both invalid dates and future dates — indistinguishable | fixed |
+| N-03 | `src/shared/utils/date.ts` | 44 | `formatDuration` does not handle `NaN` or negative values | fixed |
+| N-04 | `src/shared/utils/url.ts` | 27 | `canonicalizeUrl` returns original URL silently on parse failure | fixed |
+| N-05 | `src/shared/utils/url.ts` | 71 | `removeFragment` returns original URL silently on parse failure | fixed |
+| N-06 | `src/infrastructure/messaging/browser-runtime.ts` | 43-59 | `JSON.stringify(payload ?? '')` can throw on circular refs or `BigInt` — no try-catch | fixed |
+| N-07 | `src/infrastructure/messaging/browser-runtime.ts` | 81 | `throw sizeCheck.error` — `error` is `AppError | undefined` per return type | fixed |
+| N-08 | `src/infrastructure/messaging/message-registry.ts` | 67, 73 | `senderCheck.error!` and `sizeCheck.error!` — non-null assertions on optional properties | fixed |
+| N-09 | `src/infrastructure/permissions/model-origin-gateway.ts` | 15-18 | `validateModelBaseUrl` returns `{ valid, origin? }` — not a discriminated union; `origin` may be undefined when `valid` is true | fixed |
+| N-10 | `src/infrastructure/permissions/model-origin-gateway.ts` | 131-138 | `canMakeModelRequest` returns `{ allowed, error? }` — `error` may be undefined when `allowed` is false | fixed |
 | N-11 | `src/infrastructure/db/repository-impl.ts` | 131, 235, 389 | `parseInt(query.cursor, 10)` — no validation for `NaN`; produces incorrect pagination | pending |
 | N-12 | `src/infrastructure/db/repository-impl.ts` | 122 | `query.tagIds!.every(...)` — non-null assertion inside closure; narrowing doesn't persist | pending |
 | N-13 | `src/infrastructure/storage/settings-gateway.ts` | 157-159 | After cast, `credential.id`/`credential.encryptedValue` may be `undefined` if stored data is corrupted | pending |

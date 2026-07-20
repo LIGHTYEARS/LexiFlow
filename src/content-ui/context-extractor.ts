@@ -96,8 +96,8 @@ export function extractContext(snapshot: SelectionSnapshot): ContextEvidence {
   // Check for editable content
   const ancestor = range.commonAncestorContainer;
   const ancestorEl =
-    ancestor.nodeType === Node.ELEMENT_NODE
-      ? (ancestor as HTMLElement)
+    ancestor instanceof HTMLElement
+      ? ancestor
       : ancestor.parentElement;
 
   if (ancestorEl?.isContentEditable) {
@@ -294,8 +294,8 @@ function extractAdjacentSentences(range: Range): {
 function extractParagraphExcerpt(range: Range): string | undefined {
   // Walk up to find the nearest paragraph-like container
   let element: HTMLElement | null =
-    range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
-      ? (range.commonAncestorContainer as HTMLElement)
+    range.commonAncestorContainer instanceof HTMLElement
+      ? range.commonAncestorContainer
       : range.commonAncestorContainer.parentElement;
 
   while (element && !CONTAINER_TAGS.has(element.tagName)) {
@@ -318,8 +318,8 @@ function extractParagraphExcerpt(range: Range): string | undefined {
  */
 function extractNearestHeading(range: Range): string | undefined {
   let element: HTMLElement | null =
-    range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
-      ? (range.commonAncestorContainer as HTMLElement)
+    range.commonAncestorContainer instanceof HTMLElement
+      ? range.commonAncestorContainer
       : range.commonAncestorContainer.parentElement;
 
   while (element && element !== document.body) {
@@ -368,11 +368,11 @@ function getVisibleText(node: Node): string {
     return node.textContent || '';
   }
 
-  if (node.nodeType !== Node.ELEMENT_NODE) {
+  if (!(node instanceof HTMLElement)) {
     return '';
   }
 
-  const element = node as HTMLElement;
+  const element = node;
 
   // Check if element is hidden
   if (element.offsetParent === null && element.tagName !== 'BODY') {

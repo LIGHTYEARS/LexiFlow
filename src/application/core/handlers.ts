@@ -17,6 +17,9 @@ import {
 export function registerCoreHandlers(): void {
   // ── Settings: site policy query ──
   messageRegistry.register('settings/site-policy', async (payload, envelope) => {
+    if (!payload || typeof payload !== 'object' || !('origin' in payload) || typeof (payload as any).origin !== 'string') {
+      return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+    }
     const { origin } = payload as { origin: string };
     if (!origin) {
       return fail(envelope.requestId, createError('INVALID_INPUT', 'Origin required', false));
@@ -39,14 +42,18 @@ export function registerCoreHandlers(): void {
     return ok(envelope.requestId, {
       ...settings,
       model: {
-        ...settings.model,
-        hasCredential: settings.model.credentialRef ? true : false,
+        baseUrl: settings.model.baseUrl,
+        hasCredential: !!settings.model.credentialRef,
+        taskModels: settings.model.taskModels,
       },
     });
   });
 
   // ── Page access: enable current site ──
   messageRegistry.register('page/enable-site', async (payload, envelope) => {
+    if (!payload || typeof payload !== 'object' || !('url' in payload) || typeof (payload as any).url !== 'string') {
+      return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+    }
     const { url, tabId } = payload as { url: string; tabId?: number };
     if (!url || !isSupportedPage(url)) {
       return fail(
@@ -78,6 +85,9 @@ export function registerCoreHandlers(): void {
 
   // ── Page access: disable current site ──
   messageRegistry.register('page/disable-site', async (payload, envelope) => {
+    if (!payload || typeof payload !== 'object' || !('url' in payload) || typeof (payload as any).url !== 'string') {
+      return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+    }
     const { url } = payload as { url: string };
     const originPattern = deriveOriginPattern(url);
     if (!originPattern) {
@@ -90,6 +100,9 @@ export function registerCoreHandlers(): void {
 
   // ── Page access: check if site is enabled ──
   messageRegistry.register('page/check-access', async (payload, envelope) => {
+    if (!payload || typeof payload !== 'object' || !('url' in payload) || typeof (payload as any).url !== 'string') {
+      return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+    }
     const { url } = payload as { url: string };
     const originPattern = deriveOriginPattern(url);
     if (!originPattern) {
@@ -101,6 +114,9 @@ export function registerCoreHandlers(): void {
 
   // ── Navigation: open extension page ──
   messageRegistry.register('navigation/open', async (payload, envelope) => {
+    if (!payload || typeof payload !== 'object' || !('destination' in payload) || typeof (payload as any).destination !== 'string') {
+      return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+    }
     const { destination } = payload as { destination: string; tabId?: number };
 
     const validDestinations = ['dashboard', 'review', 'inbox', 'settings'];
@@ -115,7 +131,7 @@ export function registerCoreHandlers(): void {
     const dashboardUrl = chrome.runtime.getURL(`dashboard.html#/${destination}`);
     await chrome.tabs.create({ url: dashboardUrl });
 
-    return ok(envelope.requestId, undefined as unknown);
+    return ok(envelope.requestId, undefined);
   });
 
   // ── Dashboard: get counts (placeholder — real implementation in M5-M7) ──
@@ -131,10 +147,10 @@ export function registerCoreHandlers(): void {
 
   // ── Page summary (placeholder — real implementation in M6) ──
   messageRegistry.register('page/summary', async (payload, envelope) => {
-    const { url } = payload as { url?: string };
+    const { pageUrl } = payload as { pageUrl?: string };
     return ok(envelope.requestId, {
       pageId: '',
-      url: url || '',
+      pageUrl: pageUrl || '',
       title: '',
       cardCount: 0,
       inboxCount: 0,

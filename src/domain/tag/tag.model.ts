@@ -22,6 +22,7 @@ export const CardRelationSchema = z.object({
   id: z.string().uuid(),
   fromCardId: z.string().uuid(),
   toCardId: z.string().uuid(),
+  // Keep in sync with CardRelationType in ../types.ts
   type: z.enum([
     'variant',
     'synonym',
@@ -31,7 +32,9 @@ export const CardRelationSchema = z.object({
     'pattern_usage',
     'related',
   ]),
+  // Keep in sync with RelationDirection in ../types.ts
   direction: z.enum(['directed', 'symmetric']),
+  // Keep in sync with ContentOrigin in ../types.ts
   origin: z.enum(['web_page', 'user', 'model', 'import']),
   note: z.string().optional(),
   createdAt: z.string().datetime(),

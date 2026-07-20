@@ -196,7 +196,9 @@ describe('validateSender', () => {
   it('rejects message from different extension', () => {
     const result = validateSender({ id: 'other-extension' } as unknown as chrome.runtime.MessageSender);
     expect(result.valid).toBe(false);
-    expect(result.error?.code).toBe('PERMISSION_DENIED');
+    if (!result.valid) {
+      expect(result.error.code).toBe('PERMISSION_DENIED');
+    }
   });
 
   it('accepts content script message with tab', () => {
@@ -218,7 +220,9 @@ describe('validatePayloadSize', () => {
     const large = { data: 'x'.repeat(MAX_MESSAGE_PAYLOAD_BYTES + 1) };
     const result = validatePayloadSize(large);
     expect(result.valid).toBe(false);
-    expect(result.error?.code).toBe('INVALID_INPUT');
+    if (!result.valid) {
+      expect(result.error.code).toBe('INVALID_INPUT');
+    }
   });
 });
 

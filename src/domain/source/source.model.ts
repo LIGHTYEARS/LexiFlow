@@ -33,8 +33,8 @@ export const SourceCaptureSchema = z.object({
     paragraphExcerpt: z.string().optional(),
     nearestHeading: z.string().optional(),
     pageTitle: z.string(),
-    url: z.string(),
-    canonicalUrl: z.string().optional(),
+    url: z.string().url(),
+    canonicalUrl: z.string().url().optional(),
     siteName: z.string().optional(),
     extractedAt: z.string().datetime(),
     quality: z.enum(['full', 'partial', 'selection_only']),
@@ -42,7 +42,7 @@ export const SourceCaptureSchema = z.object({
   }),
   capturedAt: z.string().datetime(),
   contentHash: z.string(),
-  captureRequestId: z.string(),
+  captureRequestId: z.string().uuid(),
 });
 
 export type SourceCapture = z.infer<typeof SourceCaptureSchema>;

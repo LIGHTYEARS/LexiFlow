@@ -24,7 +24,7 @@ export function parseUrl(url: string): URL | null {
  */
 export function canonicalizeUrl(url: string): string {
   const parsed = parseUrl(url);
-  if (!parsed) return url;
+  if (!parsed) throw new Error('Cannot canonicalize invalid URL: ' + url);
 
   // Remove fragment
   parsed.hash = '';
@@ -68,7 +68,7 @@ export function isHttpUrl(url: string): boolean {
  */
 export function removeFragment(url: string): string {
   const parsed = parseUrl(url);
-  if (!parsed) return url;
+  if (!parsed) throw new Error('Cannot remove fragment from invalid URL: ' + url);
   parsed.hash = '';
   return parsed.toString();
 }

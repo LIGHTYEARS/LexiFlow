@@ -35,7 +35,9 @@ export type ConfidenceLabel =
 export type ProvenancedText = {
   value: string;
   origin: ContentOrigin;
+  /** UUID string */
   sourceCaptureId?: EntityId;
+  /** UUID string */
   modelRunId?: EntityId;
   editedAt?: string;
 };

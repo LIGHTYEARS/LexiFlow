@@ -12,10 +12,9 @@ import type { PageSessionRef } from '@shared/protocol/page-session';
  * Validate a message sender. Ensures the message comes from our own extension
  * and an expected context (trusted extension page or authorized content script).
  */
-export function validateSender(sender: chrome.runtime.MessageSender): {
-  valid: boolean;
-  error?: AppError;
-} {
+export function validateSender(sender: chrome.runtime.MessageSender):
+  | { valid: true }
+  | { valid: false; error: AppError } {
   // Must come from our own extension
   if (sender.id !== chrome.runtime.id) {
     return {
@@ -40,11 +39,23 @@ export function validateSender(sender: chrome.runtime.MessageSender): {
 /**
  * Validate message payload size. See technical-design/11 §5.
  */
-export function validatePayloadSize(payload: unknown): {
-  valid: boolean;
-  error?: AppError;
-} {
-  const size = new Blob([JSON.stringify(payload ?? '')]).size;
+export function validatePayloadSize(payload: unknown):
+  | { valid: true }
+  | { valid: false; error: AppError } {
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(payload ?? '') ?? '';
+  } catch {
+    return {
+      valid: false,
+      error: createError(
+        'INVALID_INPUT',
+        'Message payload contains values that cannot be serialized',
+        false,
+      ),
+    };
+  }
+  const size = new Blob([serialized]).size;
   if (size > MAX_MESSAGE_PAYLOAD_BYTES) {
     return {
       valid: false,
@@ -82,6 +93,7 @@ export async function sendMessage<TResponse>(
   }
 
   const response = await chrome.runtime.sendMessage(envelope);
+  /** @type assertion — response type must match the ProtocolMap definition for this message type */
   return response as TResponse;
 }
 
@@ -104,6 +116,7 @@ export async function sendMessageToTab<TResponse>(
   };
 
   const response = await chrome.tabs.sendMessage(tabId, envelope);
+  /** @type assertion — response type must match the ProtocolMap definition for this message type */
   return response as TResponse;
 }
 

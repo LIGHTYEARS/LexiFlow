@@ -64,13 +64,17 @@ describe('ModelOriginPermissionGateway', () => {
     it('accepts valid https URL', () => {
       const result = validateModelBaseUrl('https://api.example.com/v1');
       expect(result.valid).toBe(true);
-      expect(result.origin).toBe('https://api.example.com');
+      if (result.valid) {
+        expect(result.origin).toBe('https://api.example.com');
+      }
     });
 
     it('accepts localhost http URL', () => {
       const result = validateModelBaseUrl('http://localhost:4000');
       expect(result.valid).toBe(true);
-      expect(result.origin).toBe('http://localhost:4000');
+      if (result.valid) {
+        expect(result.origin).toBe('http://localhost:4000');
+      }
     });
 
     it('accepts 127.0.0.1 http URL', () => {
@@ -81,7 +85,9 @@ describe('ModelOriginPermissionGateway', () => {
     it('rejects remote http URL', () => {
       const result = validateModelBaseUrl('http://api.example.com');
       expect(result.valid).toBe(false);
-      expect(result.error?.code).toBe('INVALID_INPUT');
+      if (!result.valid) {
+        expect(result.error.code).toBe('INVALID_INPUT');
+      }
     });
 
     it('rejects URL with userinfo', () => {
