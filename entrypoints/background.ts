@@ -7,6 +7,7 @@ import {
   getAuthorizedOrigins,
 } from '@infra/permissions/page-access-policy';
 import { registerCoreHandlers } from '@app/core/handlers';
+import { runMigrations } from '@infra/db/migrations';
 import { fail, createError } from '@shared/protocol/envelope';
 
 // LexiFlow Background Service Worker
@@ -16,6 +17,15 @@ import { fail, createError } from '@shared/protocol/envelope';
 export default defineBackground(() => {
   // ── Startup: Set storage access level ──
   initializeStorageAccess();
+
+  // ── Startup: Run database migrations ──
+  runMigrations().then((status) => {
+    if (status.phase === 'error') {
+      console.error('[LexiFlow] Migration failed:', status.error);
+    } else if ('message' in status) {
+      console.log('[LexiFlow] Database ready:', status.message);
+    }
+  });
 
   // ── Register all message handlers ──
   registerCoreHandlers();

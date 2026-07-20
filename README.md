@@ -63,8 +63,8 @@ See [docs/technical-design/01-architecture-and-technology-baseline.md](docs/tech
 
 | Milestone | Name | Status |
 |---|---|---|
-| M0 | Project Scaffold & Architecture Baseline | 🟡 In Progress |
-| M1 | Runtime & Communication Layer | ⬜ Planned |
+| M0 | Project Scaffold & Architecture Baseline | ✅ Done |
+| M1 | Runtime & Communication Layer | ✅ Done |
 | M2 | Data Layer & Domain Model | ⬜ Planned |
 | M3 | Selection Trigger & Context Extraction | ⬜ Planned |
 | M4 | AI Task Execution | ⬜ Planned |
