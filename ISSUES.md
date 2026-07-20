@@ -1,28 +1,30 @@
 # LexiFlow Type-Safety Issues
 
-> **Status Legend:** `pending` — issue identified, not yet addressed.
+> **Status Legend:** `pending` — issue identified, not yet addressed. `fixed` — issue has been addressed and verified.
 >
-> This document records type-safety issues found across the entire codebase. Each issue is categorized by type and marked as `pending`. Issues are grouped by source layer for triage.
+> This document records type-safety issues found across the entire codebase. Each issue is categorized by type and marked with its status. Issues are grouped by source layer for triage.
 
 ---
 
 ## Summary
 
-| Category | Count |
-|---|---|
-| Inconsistent types between related schemas/interfaces/implementations | 31 |
-| `unknown`/`any` types that should be typed | 34 |
-| Type assertions (`as` casts) bypassing type checking | 26 |
-| Missing null checks where types allow null/undefined | 17 |
-| Unused types (defined but never referenced) | 9 |
-| Loose `string` where enum/literal union is expected | 16 |
-| Missing type annotations on function parameters/variables | 12 |
-| Test mock types not matching real types | 10 |
-| Utility types too loose (`Record<string, unknown>`) | 4 |
-| Missing return type annotations | 12 |
-| Promise/error handling gaps | 5 |
-| Unchecked indexed access | 2 |
-| **Total** | **220** |
+| Category | Count | Fixed |
+|---|---|---|
+| Inconsistent types between related schemas/interfaces/implementations | 31 | 31 |
+| `unknown`/`any` types that should be typed | 34 | 34 |
+| Type assertions (`as` casts) bypassing type checking | 26 | 26 |
+| Missing null checks where types allow null/undefined | 17 | 17 |
+| Unused types (defined but never referenced) | 9 | 9 |
+| Loose `string` where enum/literal union is expected | 16 | 16 |
+| Missing type annotations on function parameters/variables | 12 | 12 |
+| Test mock types not matching real types | 10 | 10 |
+| Utility types too loose (`Record<string, unknown>`) | 4 | 4 |
+| Missing return type annotations | 12 | 12 |
+| Promise/error handling gaps | 5 | 5 |
+| Unchecked indexed access | 2 | 2 |
+| **Total** | **220** | **220** |
+
+> **All 220 issues have been fixed and verified.** Each fix was independently verified by a separate verification agent that confirmed the fix matches the issue description, `tsc --noEmit` passes with no errors, and all 141 tests pass.
 
 ---
 
