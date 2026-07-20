@@ -9,6 +9,7 @@ import {
   getAllTags,
   createOrGetTag,
 } from '@infra/db/transactions';
+import type { SaveCaptureInput } from '@infra/db/transactions';
 import {
   queryCards,
   getCard,
@@ -39,7 +40,7 @@ describe('Database Repository', () => {
   });
 
   describe('saveCaptureTransaction', () => {
-    const captureInput = {
+    const captureInput: SaveCaptureInput = {
       requestId: 'req-001',
       selectedText: 'graceful degradation',
       context: {
@@ -228,7 +229,7 @@ describe('Database Repository', () => {
       expect(result.nextCursor).toBeDefined();
 
       // Get next page
-      const page2 = await queryCards({ limit: 3, cursor: result.nextCursor });
+      const page2 = await queryCards({ limit: 3, cursor: result.nextCursor || undefined });
       expect(page2.cards.length).toBe(2);
     });
 

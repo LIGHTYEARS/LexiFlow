@@ -9,6 +9,15 @@ import {
   isSupportedPage,
   injectContentScriptIntoTab,
 } from '@infra/permissions/page-access-policy';
+import type {
+  SitePolicyQuery,
+  SitePolicyView,
+  UserSettingsView,
+  OpenDestinationCommand,
+  DashboardCounts,
+  PageSummaryQuery,
+  PageSummary,
+} from '@shared/protocol/protocol-map';
 
 /**
  * Register all M1 message handlers.
@@ -16,7 +25,7 @@ import {
  */
 export function registerCoreHandlers(): void {
   // ── Settings: site policy query ──
-  messageRegistry.register('settings/site-policy', async (payload, envelope) => {
+  messageRegistry.register<SitePolicyQuery, SitePolicyView>('settings/site-policy', async (payload: unknown, envelope) => {
     if (!payload || typeof payload !== 'object' || !('origin' in payload) || typeof (payload as any).origin !== 'string') {
       return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
     }
@@ -29,7 +38,7 @@ export function registerCoreHandlers(): void {
   });
 
   // ── Settings: get all settings (trusted contexts only) ──
-  messageRegistry.register('settings/get', async (_payload, envelope, sender) => {
+  messageRegistry.register<unknown, UserSettingsView>('settings/get', async (_payload: unknown, envelope, sender) => {
     // Only allow from extension pages (not content scripts)
     if (sender.tab && sender.url?.startsWith('http')) {
       return fail(
@@ -50,7 +59,7 @@ export function registerCoreHandlers(): void {
   });
 
   // ── Page access: enable current site ──
-  messageRegistry.register('page/enable-site', async (payload, envelope) => {
+  messageRegistry.register<{ url: string; tabId?: number }, { granted: boolean; originPattern: string }>('page/enable-site', async (payload: unknown, envelope) => {
     if (!payload || typeof payload !== 'object' || !('url' in payload) || typeof (payload as any).url !== 'string') {
       return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
     }
@@ -84,7 +93,7 @@ export function registerCoreHandlers(): void {
   });
 
   // ── Page access: disable current site ──
-  messageRegistry.register('page/disable-site', async (payload, envelope) => {
+  messageRegistry.register<{ url: string }, { removed: boolean }>('page/disable-site', async (payload: unknown, envelope) => {
     if (!payload || typeof payload !== 'object' || !('url' in payload) || typeof (payload as any).url !== 'string') {
       return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
     }
@@ -99,7 +108,7 @@ export function registerCoreHandlers(): void {
   });
 
   // ── Page access: check if site is enabled ──
-  messageRegistry.register('page/check-access', async (payload, envelope) => {
+  messageRegistry.register<{ url: string }, { enabled: boolean }>('page/check-access', async (payload: unknown, envelope) => {
     if (!payload || typeof payload !== 'object' || !('url' in payload) || typeof (payload as any).url !== 'string') {
       return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
     }
@@ -113,7 +122,7 @@ export function registerCoreHandlers(): void {
   });
 
   // ── Navigation: open extension page ──
-  messageRegistry.register('navigation/open', async (payload, envelope) => {
+  messageRegistry.register<OpenDestinationCommand, void>('navigation/open', async (payload: unknown, envelope) => {
     if (!payload || typeof payload !== 'object' || !('destination' in payload) || typeof (payload as any).destination !== 'string') {
       return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
     }
@@ -135,7 +144,7 @@ export function registerCoreHandlers(): void {
   });
 
   // ── Dashboard: get counts (placeholder — real implementation in M5-M7) ──
-  messageRegistry.register('dashboard/counts', async (_payload, envelope) => {
+  messageRegistry.register<unknown, DashboardCounts>('dashboard/counts', async (_payload: unknown, envelope) => {
     // Placeholder counts — real queries come from repository in later milestones
     return ok(envelope.requestId, {
       todayDue: 0,
@@ -146,7 +155,7 @@ export function registerCoreHandlers(): void {
   });
 
   // ── Page summary (placeholder — real implementation in M6) ──
-  messageRegistry.register('page/summary', async (payload, envelope) => {
+  messageRegistry.register<PageSummaryQuery, PageSummary>('page/summary', async (payload: unknown, envelope) => {
     const { pageUrl } = payload as { pageUrl?: string };
     return ok(envelope.requestId, {
       pageId: '',

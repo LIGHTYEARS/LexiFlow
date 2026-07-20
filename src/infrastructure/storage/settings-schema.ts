@@ -49,6 +49,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   review: {
     dailyReviewLimit: 200,
     dailyNewLimit: 20,
+    reminderTime: undefined,
   },
   model: {
     baseUrl: '',

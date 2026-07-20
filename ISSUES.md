@@ -188,13 +188,13 @@
 | N-08 | `src/infrastructure/messaging/message-registry.ts` | 67, 73 | `senderCheck.error!` and `sizeCheck.error!` — non-null assertions on optional properties | fixed |
 | N-09 | `src/infrastructure/permissions/model-origin-gateway.ts` | 15-18 | `validateModelBaseUrl` returns `{ valid, origin? }` — not a discriminated union; `origin` may be undefined when `valid` is true | fixed |
 | N-10 | `src/infrastructure/permissions/model-origin-gateway.ts` | 131-138 | `canMakeModelRequest` returns `{ allowed, error? }` — `error` may be undefined when `allowed` is false | fixed |
-| N-11 | `src/infrastructure/db/repository-impl.ts` | 131, 235, 389 | `parseInt(query.cursor, 10)` — no validation for `NaN`; produces incorrect pagination | pending |
-| N-12 | `src/infrastructure/db/repository-impl.ts` | 122 | `query.tagIds!.every(...)` — non-null assertion inside closure; narrowing doesn't persist | pending |
-| N-13 | `src/infrastructure/storage/settings-gateway.ts` | 157-159 | After cast, `credential.id`/`credential.encryptedValue` may be `undefined` if stored data is corrupted | pending |
-| N-14 | `src/infrastructure/storage/settings-schema.ts` | 50-52 | `DEFAULT_SETTINGS.review` missing `reminderTime` — callers get `undefined` | pending |
-| N-15 | `src/infrastructure/db/migrations.ts` | 63-69 | `(error as Error).message` may be `undefined` → produces `"Migration failed: undefined"` | pending |
-| N-16 | `tests/integration/repository.test.ts` | 231 | `result.nextCursor` is `string | undefined` passed directly to `queryCards` | pending |
-| N-17 | `src/content-ui/selection-validator.ts` | 199 | `rects[0]` typed as non-nullable but can be `undefined` at runtime | pending |
+| N-11 | `src/infrastructure/db/repository-impl.ts` | 131, 235, 389 | `parseInt(query.cursor, 10)` — no validation for `NaN`; produces incorrect pagination | fixed |
+| N-12 | `src/infrastructure/db/repository-impl.ts` | 122 | `query.tagIds!.every(...)` — non-null assertion inside closure; narrowing doesn't persist | fixed |
+| N-13 | `src/infrastructure/storage/settings-gateway.ts` | 157-159 | After cast, `credential.id`/`credential.encryptedValue` may be `undefined` if stored data is corrupted | fixed |
+| N-14 | `src/infrastructure/storage/settings-schema.ts` | 50-52 | `DEFAULT_SETTINGS.review` missing `reminderTime` — callers get `undefined` | fixed |
+| N-15 | `src/infrastructure/db/migrations.ts` | 63-69 | `(error as Error).message` may be `undefined` → produces `"Migration failed: undefined"` | fixed |
+| N-16 | `tests/integration/repository.test.ts` | 231 | `result.nextCursor` is `string | undefined` passed directly to `queryCards` | fixed |
+| N-17 | `src/content-ui/selection-validator.ts` | 199 | `rects[0]` typed as non-nullable but can be `undefined` at runtime | fixed |
 
 ---
 
@@ -245,9 +245,9 @@ All in `src/domain/types.ts`:
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| M-01 | `src/application/core/handlers.ts` | 19, 29, 49, 80, 92, 103, 122, 133 | All handler `payload`/`_payload` parameters are implicitly `unknown` | pending |
-| M-02 | `src/application/core/handlers.ts` | 101-103 | `register` called without generics — `TInput` defaults to `unknown` | pending |
-| M-03 | `tests/integration/repository.test.ts` | 42-56 | `captureInput` object has no explicit type annotation | pending |
+| M-01 | `src/application/core/handlers.ts` | 19, 29, 49, 80, 92, 103, 122, 133 | All handler `payload`/`_payload` parameters are implicitly `unknown` | fixed |
+| M-02 | `src/application/core/handlers.ts` | 101-103 | `register` called without generics — `TInput` defaults to `unknown` | fixed |
+| M-03 | `tests/integration/repository.test.ts` | 42-56 | `captureInput` object has no explicit type annotation | fixed |
 | M-04 | `tests/integration/repository.test.ts` | 128-129 | `explanations`/`examples` object literals have no type annotation | pending |
 | M-05 | `tests/unit/infrastructure/messaging.test.ts` | 101-103 | `payload` and `envelope` callback params have no explicit types | pending |
 | M-06 | `tests/unit/infrastructure/messaging.test.ts` | 181-182 | `register('test/a', async () => ok('1', undefined))` — no typed params | pending |

@@ -120,8 +120,9 @@ export async function queryCards(query: {
 
   // Filter by tags (must have all specified tags)
   if (query.tagIds && query.tagIds.length > 0) {
+    const tagIds = query.tagIds;
     collection = collection.filter((card) =>
-      query.tagIds!.every((tagId) => card.tagIds.includes(tagId)),
+      tagIds.every((tagId) => card.tagIds.includes(tagId)),
     );
   }
 
@@ -131,7 +132,7 @@ export async function queryCards(query: {
 
   // Pagination
   const limit = query.limit || 50;
-  const startIndex = query.cursor ? parseInt(query.cursor, 10) : 0;
+  const startIndex = query.cursor ? (parseInt(query.cursor, 10) || 0) : 0;
   const paged = reversed.slice(startIndex, startIndex + limit);
   const nextCursor =
     startIndex + limit < reversed.length ? String(startIndex + limit) : undefined;
@@ -235,7 +236,7 @@ export async function getInboxItems(query: {
   const reversed = items.reverse(); // newest first
 
   const limit = query.limit || 50;
-  const startIndex = query.cursor ? parseInt(query.cursor, 10) : 0;
+  const startIndex = query.cursor ? (parseInt(query.cursor, 10) || 0) : 0;
   const paged = reversed.slice(startIndex, startIndex + limit);
   const nextCursor =
     startIndex + limit < reversed.length ? String(startIndex + limit) : undefined;
@@ -389,7 +390,7 @@ export async function getSourcePages(query: {
 }> {
   const pages = await db.sourcePages.orderBy('lastSeenAt').reverse().toArray();
   const limit = query.limit || 50;
-  const startIndex = query.cursor ? parseInt(query.cursor, 10) : 0;
+  const startIndex = query.cursor ? (parseInt(query.cursor, 10) || 0) : 0;
   const paged = pages.slice(startIndex, startIndex + limit);
 
   const results = await Promise.all(
