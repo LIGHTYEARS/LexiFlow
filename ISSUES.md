@@ -205,16 +205,16 @@ All in `src/shared/protocol/protocol-map.ts` unless noted:
 | ID | File | Line(s) | Field | Should be | Status |
 |---|---|---|---|---|---|
 | S-01 | protocol-map.ts | 148 | `action: string` in `ApplyDecisionCommand` | literal union of action types | fixed |
-| S-02 | protocol-map.ts | 154 | `proposedAction: string` in `InboxBatchPreviewCommand` | literal union of action types | pending |
-| S-03 | protocol-map.ts | 188 | `type: string` in `CardDetail` | `CardType` enum | pending |
-| S-04 | protocol-map.ts | 189 | `status: string` in `CardDetail` | `CardStatus` enum | pending |
-| S-05 | protocol-map.ts | 243 | `modes?: string[]` in `CreateReviewSessionCommand` | array of mode literals | pending |
-| S-06 | protocol-map.ts | 255 | `mode: string` in `ReviewItem` | review mode literal union | pending |
-| S-07 | protocol-map.ts | 269 | `state: string` in `RatingPreview` | FSRS state literal union | pending |
-| S-08 | protocol-map.ts | 281 | `state: string` in `ReviewCommitResult` | FSRS state literal union | pending |
-| S-09 | protocol-map.ts | 286 | `confirmedTypes: string[]` in `AnnotateErrorCommand` | `ErrorType[]` enum array | pending |
-| S-10 | protocol-map.ts | 308 | `type: string` in `AiTaskRequest` | task type literal union | pending |
-| S-11 | protocol-map.ts | 316 | `state: string` in `AiTaskSnapshot` | task state literal union | pending |
+| S-02 | protocol-map.ts | 154 | `proposedAction: string` in `InboxBatchPreviewCommand` | literal union of action types | fixed |
+| S-03 | protocol-map.ts | 188 | `type: string` in `CardDetail` | `CardType` enum | fixed |
+| S-04 | protocol-map.ts | 189 | `status: string` in `CardDetail` | `CardStatus` enum | fixed |
+| S-05 | protocol-map.ts | 243 | `modes?: string[]` in `CreateReviewSessionCommand` | array of mode literals | fixed |
+| S-06 | protocol-map.ts | 255 | `mode: string` in `ReviewItem` | review mode literal union | fixed |
+| S-07 | protocol-map.ts | 269 | `state: string` in `RatingPreview` | FSRS state literal union | fixed |
+| S-08 | protocol-map.ts | 281 | `state: string` in `ReviewCommitResult` | FSRS state literal union | fixed |
+| S-09 | protocol-map.ts | 286 | `confirmedTypes: string[]` in `AnnotateErrorCommand` | `ErrorType[]` enum array | fixed |
+| S-10 | protocol-map.ts | 308 | `type: string` in `AiTaskRequest` | task type literal union | fixed |
+| S-11 | protocol-map.ts | 316 | `state: string` in `AiTaskSnapshot` | task state literal union | fixed |
 | S-12 | protocol-map.ts | 345 | `newCaptureDestination: string` in `UserSettingsView` | destination literal union | pending |
 | S-13 | content-ui/ExplanationPopover.tsx | 17 | `type?: string` | `CardType` literal union | pending |
 | S-14 | content-ui/ExplanationPopover.tsx | 24 | `relation: string` | `CardRelationType` literal union | pending |

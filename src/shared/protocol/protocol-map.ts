@@ -1,5 +1,7 @@
 import type { AppResult } from '../protocol/envelope';
 import type { UserSettings } from '@infra/storage/settings-schema';
+import type { CardType, CardStatus } from '@domain/types';
+import type { ErrorType } from '@domain/error/error.model';
 
 /**
  * ProtocolMap defines all typed messages between extension surfaces.
@@ -159,9 +161,11 @@ export type ApplyDecisionCommand = {
   confirmationToken?: string;
 };
 
+export type InboxBatchAction = 'save' | 'save-to-inbox' | 'skip' | 'merge';
+
 export type InboxBatchPreviewCommand = {
   itemIds: string[];
-  proposedAction: string;
+  proposedAction: InboxBatchAction;
 };
 
 export type InboxBatchItem = {
@@ -223,8 +227,8 @@ export type CardReviewState = {
 
 export type CardDetail = {
   id: string;
-  type: string;
-  status: string;
+  type: CardType;
+  status: CardStatus;
   headword: string;
   explanations: Array<{ value: string; origin: string }>;
   examples: Array<{ value: string; origin: string }>;
@@ -295,10 +299,12 @@ export type PageSummaryQuery = {
   pageUrl?: string;
 };
 
+export type ReviewMode = 'quick' | 'input' | 'cloze' | 'imitation' | 'distinction';
+
 export type CreateReviewSessionCommand = {
   dateBoundary?: string;
   limits?: { maxNew?: number; maxReview?: number };
-  modes?: string[];
+  modes?: ReviewMode[];
 };
 
 export type ReviewSession = {
@@ -310,7 +316,7 @@ export type ReviewItem = {
   attemptId: string;
   cardId: string;
   prompt: string;
-  mode: string;
+  mode: ReviewMode;
 };
 
 export type ReviewRevealContext = {
@@ -328,10 +334,12 @@ export type ReviewReveal = {
 
 export type ReviewRating = 'again' | 'hard' | 'good' | 'easy';
 
+export type FsrsState = 'new' | 'learning' | 'review' | 'relearning';
+
 export type RatingPreview = {
   rating: ReviewRating;
   nextDueAt: string;
-  state: string;
+  state: FsrsState;
 };
 
 export type CommitRatingCommand = {
@@ -343,12 +351,12 @@ export type CommitRatingCommand = {
 export type ReviewCommitResult = {
   eventId: string;
   nextDueAt: string;
-  state: string;
+  state: FsrsState;
 };
 
 export type AnnotateErrorCommand = {
   eventId: string;
-  confirmedTypes: string[];
+  confirmedTypes: ErrorType[];
   note?: string;
 };
 
@@ -379,20 +387,24 @@ export type FsrsImpactPreview = {
   summary: string;
 };
 
+export type AiTaskType = 'quick-explain' | 'full-explain' | 'similar-cards' | 'context-extract';
+
 export type AiTaskRequest = {
   taskId: string;
   requestId: string;
   idempotencyKey: string;
   intentId: string;
-  type: string;
+  type: AiTaskType;
   input: { selectedText: string; context?: string; pageTitle?: string };
   modelProfileId: string;
   promptVersion: string;
 };
 
+export type AiTaskState = 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+
 export type AiTaskSnapshot = {
   taskId: string;
-  state: string;
+  state: AiTaskState;
   progress?: number;
   result?: unknown;
   error?: string;
