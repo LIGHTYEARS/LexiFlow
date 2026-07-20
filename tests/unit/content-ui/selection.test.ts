@@ -243,6 +243,7 @@ describe('Selection Observer', () => {
 
 describe('Context Extraction', () => {
   it('extracts selection-only context when no range available', () => {
+    // Test mock: SelectionSnapshot objects are intentionally partial to test specific behaviors without full schema validation
     const snapshot: SelectionSnapshot = {
       selectionId: 'test-id',
       revision: 1,

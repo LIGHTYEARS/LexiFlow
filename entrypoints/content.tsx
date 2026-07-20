@@ -65,6 +65,7 @@ export default defineContentScript({
         if (envelope.type.startsWith('command/')) {
           const command = envelope.type.slice('command/'.length);
           handleCommand(command);
+          // Response type is constrained by the handler return types (AppResult<T>)
           sendResponse({ ok: true, requestId: envelope.requestId, data: undefined });
           return true;
         }

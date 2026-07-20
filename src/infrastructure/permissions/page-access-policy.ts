@@ -104,7 +104,7 @@ export async function registerContentScriptsForOrigins(
 
   try {
     // First unregister any existing registration to avoid conflicts
-    await chrome.scripting.unregisterContentScripts({ ids: ['lexiflow-content'] }).catch(() => {});
+    await chrome.scripting.unregisterContentScripts({ ids: ['lexiflow-content'] }).catch((error) => { console.error('[LexiFlow] Failed to unregister content scripts:', error); });
 
     await chrome.scripting.registerContentScripts([
       {
@@ -115,6 +115,7 @@ export async function registerContentScriptsForOrigins(
         allFrames: false,
       },
     ]);
+    // Note: permission errors are non-fatal; logged intentionally for diagnostics
   } catch (error) {
     console.error('[LexiFlow] Failed to register content scripts:', error);
   }
@@ -126,6 +127,7 @@ export async function registerContentScriptsForOrigins(
 export async function unregisterContentScripts(): Promise<void> {
   try {
     await chrome.scripting.unregisterContentScripts({ ids: ['lexiflow-content'] });
+    // Note: permission errors are non-fatal; logged intentionally for diagnostics
   } catch (error) {
     console.error('[LexiFlow] Failed to unregister content scripts:', error);
   }
@@ -141,6 +143,7 @@ export async function injectContentScriptIntoTab(tabId: number): Promise<void> {
       target: { tabId, frameIds: [0] },
       files: ['/content.js'],
     });
+    // Note: permission errors are non-fatal; logged intentionally for diagnostics
   } catch (error) {
     console.error('[LexiFlow] Failed to inject content script:', error);
   }

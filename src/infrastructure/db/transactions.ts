@@ -78,6 +78,7 @@ export async function saveCaptureTransaction(
   const existingPage = await db.sourcePages.get({ canonicalKey });
   const pageId = existingPage ? existingPage.id : crypto.randomUUID();
 
+  // Note: transaction errors propagate to caller for error handling
   return db.transaction(
     'rw',
     db.sourcePages,
@@ -162,6 +163,7 @@ export async function createCardTransaction(
   const now = nowIso();
   const cardId = crypto.randomUUID();
 
+  // Note: transaction errors propagate to caller for error handling
   return db.transaction(
     'rw',
     db.cards,
@@ -232,6 +234,7 @@ export async function appendSourceToCard(
 ): Promise<void> {
   const now = nowIso();
 
+  // Note: transaction errors propagate to caller for error handling
   return db.transaction(
     'rw',
     db.cards,
@@ -303,6 +306,7 @@ export async function recordReviewTransaction(
   const now = nowIso();
   const eventId = crypto.randomUUID();
 
+  // Note: transaction errors propagate to caller for error handling
   return db.transaction(
     'rw',
     db.reviewEvents,

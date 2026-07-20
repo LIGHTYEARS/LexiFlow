@@ -196,6 +196,7 @@ export function createSelectionAnchor(range: Range): SelectionAnchor {
 
   // Fallback if no valid rects
   if (minX === Infinity) {
+    // Note: firstRect may be undefined; all uses below use ?. and ?? 0 for safety
     const firstRect = rects[0];
     minX = firstRect?.x ?? 0;
     minY = firstRect?.y ?? 0;

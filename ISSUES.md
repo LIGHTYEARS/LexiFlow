@@ -294,18 +294,18 @@ All React functional components missing explicit `: React.JSX.Element` return ty
 
 | ID | File | Line | Status |
 |---|---|---|---|
-| R-01 | `entrypoints/popup/App.tsx` | 3 | pending |
-| R-02 | `entrypoints/sidepanel/App.tsx` | 3 | pending |
-| R-03 | `entrypoints/dashboard/App.tsx` | 25 | pending |
-| R-04 | `entrypoints/dashboard/routes/review.tsx` | 3 | pending |
-| R-05 | `entrypoints/dashboard/routes/inbox.tsx` | 3 | pending |
-| R-06 | `entrypoints/dashboard/routes/cards.tsx` | 3 | pending |
-| R-07 | `entrypoints/dashboard/routes/sources.tsx` | 3 | pending |
-| R-08 | `entrypoints/dashboard/routes/tags.tsx` | 3 | pending |
-| R-09 | `entrypoints/dashboard/routes/errors.tsx` | 3 | pending |
-| R-10 | `entrypoints/dashboard/routes/practice.tsx` | 3 | pending |
-| R-11 | `entrypoints/dashboard/routes/stats.tsx` | 3 | pending |
-| R-12 | `entrypoints/dashboard/routes/settings.tsx` | 3 | pending |
+| R-01 | `entrypoints/popup/App.tsx` | 3 | fixed |
+| R-02 | `entrypoints/sidepanel/App.tsx` | 3 | fixed |
+| R-03 | `entrypoints/dashboard/App.tsx` | 25 | fixed |
+| R-04 | `entrypoints/dashboard/routes/review.tsx` | 3 | fixed |
+| R-05 | `entrypoints/dashboard/routes/inbox.tsx` | 3 | fixed |
+| R-06 | `entrypoints/dashboard/routes/cards.tsx` | 3 | fixed |
+| R-07 | `entrypoints/dashboard/routes/sources.tsx` | 3 | fixed |
+| R-08 | `entrypoints/dashboard/routes/tags.tsx` | 3 | fixed |
+| R-09 | `entrypoints/dashboard/routes/errors.tsx` | 3 | fixed |
+| R-10 | `entrypoints/dashboard/routes/practice.tsx` | 3 | fixed |
+| R-11 | `entrypoints/dashboard/routes/stats.tsx` | 3 | fixed |
+| R-12 | `entrypoints/dashboard/routes/settings.tsx` | 3 | fixed |
 
 ---
 
@@ -313,11 +313,11 @@ All React functional components missing explicit `: React.JSX.Element` return ty
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| P-01 | `src/infrastructure/permissions/page-access-policy.ts` | 107 | `.catch(() => {})` — swallows all errors silently on `unregisterContentScripts` | pending |
-| P-02 | `src/infrastructure/permissions/page-access-policy.ts` | 118-120, 129-131, 144-146 | `console.error(...)` in catch blocks — errors logged but not propagated as `AppError` | pending |
-| P-03 | `src/infrastructure/db/transactions.ts` | 80, 163, 233, 304 | `db.transaction(...)` calls have no explicit `.catch()` — raw Dexie errors propagate | pending |
-| P-04 | `entrypoints/background.ts` | 42 | `rawEnvelope` parameter typed as `any` by Chrome API — no type narrowing before use | pending |
-| P-05 | `entrypoints/content.tsx` | 55, 68 | `sendResponse` parameter typed as `any` by Chrome API — response not validated against `AppResult<T>` | pending |
+| P-01 | `src/infrastructure/permissions/page-access-policy.ts` | 107 | `.catch(() => {})` — swallows all errors silently on `unregisterContentScripts` | fixed |
+| P-02 | `src/infrastructure/permissions/page-access-policy.ts` | 118-120, 129-131, 144-146 | `console.error(...)` in catch blocks — errors logged but not propagated as `AppError` | fixed |
+| P-03 | `src/infrastructure/db/transactions.ts` | 80, 163, 233, 304 | `db.transaction(...)` calls have no explicit `.catch()` — raw Dexie errors propagate | fixed |
+| P-04 | `entrypoints/background.ts` | 42 | `rawEnvelope` parameter typed as `any` by Chrome API — no type narrowing before use | fixed |
+| P-05 | `entrypoints/content.tsx` | 55, 68 | `sendResponse` parameter typed as `any` by Chrome API — response not validated against `AppResult<T>` | fixed |
 
 ---
 
@@ -325,8 +325,8 @@ All React functional components missing explicit `: React.JSX.Element` return ty
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| X-01 | `src/content-ui/selection-validator.ts` | 199 | `rects[0]` typed as non-nullable but can be `undefined` at runtime (empty array) | pending |
-| X-02 | `tests/unit/content-ui/selection.test.ts` | 242-254, 295-307, 322-334 | `SelectionSnapshot` object literals not validated against full schema | pending |
+| X-01 | `src/content-ui/selection-validator.ts` | 199 | `rects[0]` typed as non-nullable but can be `undefined` at runtime (empty array) | fixed |
+| X-02 | `tests/unit/content-ui/selection.test.ts` | 242-254, 295-307, 322-334 | `SelectionSnapshot` object literals not validated against full schema | fixed |
 
 ---
 

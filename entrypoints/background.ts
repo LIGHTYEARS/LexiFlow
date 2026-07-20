@@ -39,7 +39,7 @@ export default defineBackground(() => {
 
   // ── Message routing: validate envelope → dispatch to registered handlers ──
   chrome.runtime.onMessage.addListener(
-    (rawEnvelope, sender, sendResponse) => {
+    (rawEnvelope: unknown, sender, sendResponse) => {
       // Handle async — return true to keep the message channel open
       messageRegistry
         .handle(rawEnvelope, sender)
