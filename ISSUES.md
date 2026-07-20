@@ -270,10 +270,10 @@ All in `src/domain/types.ts`:
 | K-04 | `tests/unit/content-ui/selection.test.ts` | 215, 228, 235 | Bracket notation `observer['currentSnapshot']` etc. bypasses type visibility | fixed |
 | K-05 | `tests/unit/content-ui/selection.test.ts` | 273-274 | `getElementById('para')!` and `para.firstChild!` — non-null assertions bypass null safety | fixed |
 | K-06 | `tests/unit/infrastructure/messaging.test.ts` | 114, 124, 140, 156, 176, 192, 197, 203-207 | `sender as unknown as chrome.runtime.MessageSender` — mocks missing required fields | fixed |
-| K-07 | `tests/unit/infrastructure/settings-gateway.test.ts` | 17-19, 33-34, etc. | `as unknown as { mockResolvedValue: (v: unknown) => void }` — doesn't match real `chrome.storage.local.get` signature | pending |
-| K-08 | `tests/unit/infrastructure/settings-gateway.test.ts` | 59 | `as unknown as typeof DEFAULT_SETTINGS` — double assertion to force invalid input | pending |
-| K-09 | `tests/unit/infrastructure/settings-gateway.test.ts` | 125 | `saveResult.credentialRef!` — non-null assertion on `string | undefined` | pending |
-| K-10 | `tests/integration/repository.test.ts` | 37-38 | `as unknown as { mockResolvedValue: (v: unknown) => void }` — doesn't match real Chrome API | pending |
+| K-07 | `tests/unit/infrastructure/settings-gateway.test.ts` | 17-19, 33-34, etc. | `as unknown as { mockResolvedValue: (v: unknown) => void }` — doesn't match real `chrome.storage.local.get` signature | fixed |
+| K-08 | `tests/unit/infrastructure/settings-gateway.test.ts` | 59 | `as unknown as typeof DEFAULT_SETTINGS` — double assertion to force invalid input | fixed |
+| K-09 | `tests/unit/infrastructure/settings-gateway.test.ts` | 125 | `saveResult.credentialRef!` — non-null assertion on `string | undefined` | fixed |
+| K-10 | `tests/integration/repository.test.ts` | 37-38 | `as unknown as { mockResolvedValue: (v: unknown) => void }` — doesn't match real Chrome API | fixed |
 
 ---
 
@@ -281,10 +281,10 @@ All in `src/domain/types.ts`:
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| L-01 | `src/shared/protocol/protocol-map.ts` | 116 | `context?: Record<string, unknown>` in `ExplainSelectionCommand` — no constraint on context shape | pending |
-| L-02 | `src/shared/protocol/protocol-map.ts` | 175 | `filters?: Record<string, unknown>` in `SearchCommand` — no constraint on filter keys/values | pending |
-| L-03 | `src/shared/protocol/protocol-map.ts` | 205 | `patch: Record<string, unknown>` in `PreviewPatchCommand` — no constraint on patchable fields | pending |
-| L-04 | `src/shared/protocol/protocol-map.ts` | 353 | `patch: Record<string, unknown>` in `SettingsUpdateCommand` — no constraint on settings fields | pending |
+| L-01 | `src/shared/protocol/protocol-map.ts` | 116 | `context?: Record<string, unknown>` in `ExplainSelectionCommand` — no constraint on context shape | fixed |
+| L-02 | `src/shared/protocol/protocol-map.ts` | 175 | `filters?: Record<string, unknown>` in `SearchCommand` — no constraint on filter keys/values | fixed |
+| L-03 | `src/shared/protocol/protocol-map.ts` | 205 | `patch: Record<string, unknown>` in `PreviewPatchCommand` — no constraint on patchable fields | fixed |
+| L-04 | `src/shared/protocol/protocol-map.ts` | 353 | `patch: Record<string, unknown>` in `SettingsUpdateCommand` — no constraint on settings fields | fixed |
 
 ---
 

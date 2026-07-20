@@ -36,6 +36,7 @@ describe('Database Repository', () => {
     await db.operationLogs.clear();
 
     // Mock chrome.storage for schema version
+    // Test mock: as unknown as ... is the standard pattern for mocking Chrome API functions in tests
     (chrome.storage.local.get as unknown as { mockResolvedValue: (v: unknown) => void }).mockResolvedValue({});
     (chrome.storage.local.set as unknown as { mockResolvedValue: (v: unknown) => void }).mockResolvedValue(undefined);
   });

@@ -14,6 +14,7 @@ import { DEFAULT_SETTINGS } from '@infra/storage/settings-schema';
 describe('SettingsGateway', () => {
   beforeEach(() => {
     // Clear mock storage between tests
+    // Test mock: as unknown as ... is the standard pattern for mocking Chrome API functions in tests
     (chrome.storage.local.get as unknown as { mockResolvedValue: (v: unknown) => void }).mockResolvedValue({});
     (chrome.storage.local.set as unknown as { mockResolvedValue: (v: unknown) => void }).mockResolvedValue(undefined);
     (chrome.storage.local.remove as unknown as { mockResolvedValue: (v: unknown) => void }).mockResolvedValue(undefined);
@@ -56,6 +57,7 @@ describe('SettingsGateway', () => {
     });
 
     it('rejects invalid settings', async () => {
+      // Intentionally invalid: as unknown as typeof DEFAULT_SETTINGS forces invalid input to test the validation fallback path
       const result = await saveSettings({ ...DEFAULT_SETTINGS, schemaVersion: 999 } as unknown as typeof DEFAULT_SETTINGS);
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe('INVALID_INPUT');
@@ -122,6 +124,7 @@ describe('SettingsGateway', () => {
         },
       });
 
+      // Non-null assertion: test setup above guarantees credentialRef is set
       const value = await getCredentialValue(saveResult.credentialRef!);
       expect(value).toBe('sk-test123');
     });

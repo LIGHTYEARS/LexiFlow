@@ -1,6 +1,8 @@
 import type { AppResult } from '../protocol/envelope';
 import type { UserSettings } from '@infra/storage/settings-schema';
 import type { CardType, CardStatus } from '@domain/types';
+import type { Card } from '@domain/card/card.model';
+import type { ContextEvidence } from '@content-ui/context-extractor';
 import type { ErrorType } from '@domain/error/error.model';
 
 /**
@@ -116,7 +118,7 @@ export interface ProtocolMap {
 export type ExplainSelectionCommand = {
   requestId: string;
   selection: string;
-  context?: Record<string, unknown>;
+  context?: Partial<ContextEvidence>;
   source: { origin: string; urlWithoutFragment: string };
   task: 'quick-explain';
 };
@@ -197,9 +199,15 @@ export type InboxBatchResult = {
   results: InboxBatchResultItem[];
 };
 
+export type SearchFilters = {
+  type?: CardType;
+  status?: CardStatus;
+  tagId?: string;
+};
+
 export type SearchCommand = {
   query: string;
-  filters?: Record<string, unknown>;
+  filters?: SearchFilters;
   cursor?: string;
   limit?: number;
 };
@@ -249,7 +257,7 @@ export type CardDetail = {
 export type PreviewPatchCommand = {
   cardId: string;
   expectedRevision: number;
-  patch: Record<string, unknown>;
+  patch: Partial<Card>;
 };
 
 export type PatchPreview = {
@@ -448,7 +456,7 @@ export type UserSettingsView = Omit<UserSettings, 'model' | 'automation'> & {
 };
 
 export type SettingsUpdateCommand = {
-  patch: Record<string, unknown>;
+  patch: Partial<UserSettings>;
 };
 
 export type OpenDestinationCommand = {
