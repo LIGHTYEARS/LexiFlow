@@ -234,10 +234,10 @@ All in `src/domain/types.ts`:
 | T-03 | `CardStatus` | 14 | Never imported — redefined inline in `card.model.ts` | fixed |
 | T-04 | `ContentOrigin` | 17 | Never imported — redefined inline in `card.model.ts`, `tag.model.ts` | fixed |
 | T-05 | `ConfidenceLabel` | 24-28 | Never used anywhere — no schema references it | fixed |
-| T-06 | `ProvenancedText` | 35-41 | Never imported — shape duplicated inline 4 times in `card.model.ts` | pending |
-| T-07 | `CardRelationType` | 46-53 | Never imported — redefined inline in `tag.model.ts` | pending |
-| T-08 | `RelationDirection` | 60 | Never imported — redefined inline in `tag.model.ts` | pending |
-| T-09 | `CardSchema` (no link to `CardContentSchema`) | card.model.ts:88-93 | `CardContentSchema` defined but never attached to `CardSchema` | pending |
+| T-06 | `ProvenancedText` | 35-41 | Never imported — shape duplicated inline 4 times in `card.model.ts` | fixed |
+| T-07 | `CardRelationType` | 46-53 | Never imported — redefined inline in `tag.model.ts` | fixed |
+| T-08 | `RelationDirection` | 60 | Never imported — redefined inline in `tag.model.ts` | fixed |
+| T-09 | `CardSchema` (no link to `CardContentSchema`) | card.model.ts:88-93 | `CardContentSchema` defined but never attached to `CardSchema` | fixed |
 
 ---
 
@@ -264,12 +264,12 @@ All in `src/domain/types.ts`:
 
 | ID | File | Line(s) | Description | Status |
 |---|---|---|---|---|
-| K-01 | `tests/unit/content-ui/selection.test.ts` | 35-39, 51-57, etc. | `as unknown as Selection` — mocks missing many required `Selection` properties | pending |
-| K-02 | `tests/unit/content-ui/selection.test.ts` | 179-184, 277-280 | `as unknown as Range` — mocks missing many required `Range` properties | pending |
-| K-03 | `tests/unit/content-ui/selection.test.ts` | 215-227 | `as SelectionSnapshot` — forces object literal to match type without field verification | pending |
-| K-04 | `tests/unit/content-ui/selection.test.ts` | 215, 228, 235 | Bracket notation `observer['currentSnapshot']` etc. bypasses type visibility | pending |
-| K-05 | `tests/unit/content-ui/selection.test.ts` | 273-274 | `getElementById('para')!` and `para.firstChild!` — non-null assertions bypass null safety | pending |
-| K-06 | `tests/unit/infrastructure/messaging.test.ts` | 114, 124, 140, 156, 176, 192, 197, 203-207 | `sender as unknown as chrome.runtime.MessageSender` — mocks missing required fields | pending |
+| K-01 | `tests/unit/content-ui/selection.test.ts` | 35-39, 51-57, etc. | `as unknown as Selection` — mocks missing many required `Selection` properties | fixed |
+| K-02 | `tests/unit/content-ui/selection.test.ts` | 179-184, 277-280 | `as unknown as Range` — mocks missing many required `Range` properties | fixed |
+| K-03 | `tests/unit/content-ui/selection.test.ts` | 215-227 | `as SelectionSnapshot` — forces object literal to match type without field verification | fixed |
+| K-04 | `tests/unit/content-ui/selection.test.ts` | 215, 228, 235 | Bracket notation `observer['currentSnapshot']` etc. bypasses type visibility | fixed |
+| K-05 | `tests/unit/content-ui/selection.test.ts` | 273-274 | `getElementById('para')!` and `para.firstChild!` — non-null assertions bypass null safety | fixed |
+| K-06 | `tests/unit/infrastructure/messaging.test.ts` | 114, 124, 140, 156, 176, 192, 197, 203-207 | `sender as unknown as chrome.runtime.MessageSender` — mocks missing required fields | fixed |
 | K-07 | `tests/unit/infrastructure/settings-gateway.test.ts` | 17-19, 33-34, etc. | `as unknown as { mockResolvedValue: (v: unknown) => void }` — doesn't match real `chrome.storage.local.get` signature | pending |
 | K-08 | `tests/unit/infrastructure/settings-gateway.test.ts` | 59 | `as unknown as typeof DEFAULT_SETTINGS` — double assertion to force invalid input | pending |
 | K-09 | `tests/unit/infrastructure/settings-gateway.test.ts` | 125 | `saveResult.credentialRef!` — non-null assertion on `string | undefined` | pending |

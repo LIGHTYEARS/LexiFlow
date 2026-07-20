@@ -112,6 +112,7 @@ describe('Message Registry', () => {
     };
 
     const sender = { id: chrome.runtime.id, url: 'chrome-extension://test/popup.html' };
+    // Test mock: as unknown as MessageSender is the standard pattern for mocking complex Chrome API types in tests
     const result = await messageRegistry.handle(envelope, sender as unknown as chrome.runtime.MessageSender);
 
     expect(result.ok).toBe(true);

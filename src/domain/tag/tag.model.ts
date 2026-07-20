@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import type { ContentOrigin } from '../types';
+import type { ContentOrigin, CardRelationType, RelationDirection } from '../types';
 
-export type { ContentOrigin };
+export type { ContentOrigin, CardRelationType, RelationDirection };
 
 /**
  * Tag entity. See PRD §11.4 and technical-design/04 §5.4.

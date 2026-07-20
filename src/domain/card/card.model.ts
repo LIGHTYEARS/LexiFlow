@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import type { EntityId, CardType, CardStatus, ContentOrigin } from '../types';
+import type { EntityId, CardType, CardStatus, ContentOrigin, ProvenancedText } from '../types';
 
-export type { EntityId, CardType, CardStatus, ContentOrigin };
+export type { EntityId, CardType, CardStatus, ContentOrigin, ProvenancedText };
 
 /**
  * A text value with provenance tracking.

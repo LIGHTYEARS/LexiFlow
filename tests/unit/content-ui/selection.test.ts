@@ -36,6 +36,7 @@ describe('Selection Validation', () => {
           getClientRects: () => [{ x: 0, y: 0, width: 10, height: 10 }],
           commonAncestorContainer: document.body,
         }),
+      // Test mock: as unknown as Selection is the standard pattern for mocking complex browser API types in tests
       } as unknown as Selection;
 
       const result = validateSelection(selection);
@@ -181,6 +182,7 @@ describe('Selection Validation', () => {
           { x: 10, y: 20, width: 100, height: 20 },
           { x: 10, y: 40, width: 80, height: 20 },
         ],
+      // Test mock: as unknown as Range is the standard pattern for mocking complex browser API types in tests
       } as unknown as Range;
 
       const anchor = createSelectionAnchor(mockRange);
@@ -212,6 +214,7 @@ describe('Selection Observer', () => {
     });
 
     // Simulate selection change
+    // Test-only: bracket notation accesses private members not exposed in the public API
     observer['currentSnapshot'] = {
       selectionId: 'test-id',
       revision: 1,
@@ -224,6 +227,7 @@ describe('Selection Observer', () => {
         unionRect: { x: 0, y: 0, width: 10, height: 10 },
         direction: 'forward',
       },
+    // Test-only: as SelectionSnapshot assertion forces the mock to match the internal type for testing private state
     } as SelectionSnapshot;
     observer['notify'](observer['currentSnapshot']);
 
@@ -270,6 +274,7 @@ describe('Context Extraction', () => {
     `;
     document.title = 'Test Article';
 
+    // Non-null assertions are safe here: test setup above guarantees these elements exist
     const para = document.getElementById('para')!;
     const textNode = para.firstChild!;
 
