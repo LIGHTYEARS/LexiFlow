@@ -10,6 +10,7 @@ import {
   createOrGetTag,
 } from '@infra/db/transactions';
 import type { SaveCaptureInput } from '@infra/db/transactions';
+import type { Card } from '@domain/card/card.model';
 import {
   queryCards,
   getCard,
@@ -122,12 +123,18 @@ describe('Database Repository', () => {
       const captureRecord = await db.sourceCaptures.toArray();
 
       // Create card from that capture
+      const explanations: Array<{ value: string; origin: Card['headword']['origin'] }> = [
+        { value: 'a test word', origin: 'model' },
+      ];
+      const examples: Array<{ value: string; origin: Card['headword']['origin'] }> = [
+        { value: 'This is a test word.', origin: 'web_page' },
+      ];
       const card = await createCardTransaction({
         requestId: 'req-create-1',
         type: 'word',
         headword: 'test word',
-        explanations: [{ value: 'a test word', origin: 'model' }],
-        examples: [{ value: 'This is a test word.', origin: 'web_page' }],
+        explanations,
+        examples,
         sourceCaptureId: captureRecord[0].id,
       });
 

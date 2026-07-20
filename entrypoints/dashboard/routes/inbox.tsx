@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Inbox() {
+export default function Inbox(): React.JSX.Element {
   return (
     <div>
       <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>Inbox</h2>

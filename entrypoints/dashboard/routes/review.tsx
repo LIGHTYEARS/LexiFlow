@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Review() {
+export default function Review(): React.JSX.Element {
   return (
     <div>
       <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>Today Review</h2>

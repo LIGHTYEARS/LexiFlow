@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Stats() {
+export default function Stats(): React.JSX.Element {
   return (
     <div>
       <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>Statistics</h2>

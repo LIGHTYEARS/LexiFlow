@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Cards() {
+export default function Cards(): React.JSX.Element {
   return (
     <div>
       <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>All Cards</h2>

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Errors() {
+export default function Errors(): React.JSX.Element {
   return (
     <div>
       <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>Errors</h2>

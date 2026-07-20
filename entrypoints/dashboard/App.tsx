@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   { to: '/settings', label: 'Settings' },
 ];
 
-export default function App() {
+export default function App(): React.JSX.Element {
   return (
     <div
       style={{

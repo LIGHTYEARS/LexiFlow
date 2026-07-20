@@ -7,6 +7,7 @@ import { TagSchema, CardRelationSchema } from '@domain/tag/tag.model';
 
 describe('Domain Schema Validation', () => {
   describe('CardSchema', () => {
+    // Intentionally untyped: verifies schema accepts valid data from untyped inputs
     it('accepts a valid card', () => {
       const card = {
         id: crypto.randomUUID(),
@@ -50,6 +51,7 @@ describe('Domain Schema Validation', () => {
   });
 
   describe('SourceCaptureSchema', () => {
+    // Intentionally untyped: verifies schema accepts valid data from untyped inputs
     it('accepts a valid capture', () => {
       const capture = {
         id: crypto.randomUUID(),
@@ -70,6 +72,7 @@ describe('Domain Schema Validation', () => {
   });
 
   describe('InboxItemSchema', () => {
+    // Intentionally untyped: verifies schema accepts valid data from untyped inputs
     it('accepts a valid inbox item', () => {
       const item = {
         id: crypto.randomUUID(),
@@ -84,6 +87,7 @@ describe('Domain Schema Validation', () => {
   });
 
   describe('ReviewEventSchema', () => {
+    // Intentionally untyped: verifies schema accepts valid data from untyped inputs
     it('accepts a valid review event', () => {
       const event = {
         eventId: crypto.randomUUID(),
@@ -113,6 +117,7 @@ describe('Domain Schema Validation', () => {
   });
 
   describe('TagSchema', () => {
+    // Intentionally untyped: verifies schema accepts valid data from untyped inputs
     it('accepts a valid tag', () => {
       const tag = {
         id: crypto.randomUUID(),
@@ -127,6 +132,7 @@ describe('Domain Schema Validation', () => {
   });
 
   describe('CardRelationSchema', () => {
+    // Intentionally untyped: verifies schema accepts valid data from untyped inputs
     it('accepts a valid relation', () => {
       const relation = {
         id: crypto.randomUUID(),

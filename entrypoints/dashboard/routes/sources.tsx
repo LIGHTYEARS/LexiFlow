@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Sources() {
+export default function Sources(): React.JSX.Element {
   return (
     <div>
       <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>Sources</h2>

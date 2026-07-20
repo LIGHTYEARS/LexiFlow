@@ -145,6 +145,7 @@ export type CreateCardInput = {
   requestId: string;
   type: Card['type'];
   headword: string;
+  headwordOrigin?: Card['headword']['origin'];
   explanations: Array<{ value: string; origin: Card['headword']['origin'] }>;
   examples: Array<{ value: string; origin: Card['headword']['origin'] }>;
   sourceCaptureId: string;
@@ -174,7 +175,7 @@ export async function createCardTransaction(
         status: 'active',
         headword: {
           value: normalizeForDisplay(input.headword),
-          origin: 'web_page',
+          origin: input.headwordOrigin || 'web_page',
           sourceCaptureId: input.sourceCaptureId,
         },
         normalizedKey: normalizeForComparison(input.headword),

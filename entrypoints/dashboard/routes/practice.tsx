@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Practice() {
+export default function Practice(): React.JSX.Element {
   return (
     <div>
       <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>Practice</h2>

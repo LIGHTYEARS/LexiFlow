@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Tags() {
+export default function Tags(): React.JSX.Element {
   return (
     <div>
       <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>Tags</h2>

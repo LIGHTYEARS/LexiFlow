@@ -204,7 +204,7 @@ All in `src/shared/protocol/protocol-map.ts` unless noted:
 
 | ID | File | Line(s) | Field | Should be | Status |
 |---|---|---|---|---|---|
-| S-01 | protocol-map.ts | 148 | `action: string` in `ApplyDecisionCommand` | literal union of action types | pending |
+| S-01 | protocol-map.ts | 148 | `action: string` in `ApplyDecisionCommand` | literal union of action types | fixed |
 | S-02 | protocol-map.ts | 154 | `proposedAction: string` in `InboxBatchPreviewCommand` | literal union of action types | pending |
 | S-03 | protocol-map.ts | 188 | `type: string` in `CardDetail` | `CardType` enum | pending |
 | S-04 | protocol-map.ts | 189 | `status: string` in `CardDetail` | `CardStatus` enum | pending |
@@ -248,15 +248,15 @@ All in `src/domain/types.ts`:
 | M-01 | `src/application/core/handlers.ts` | 19, 29, 49, 80, 92, 103, 122, 133 | All handler `payload`/`_payload` parameters are implicitly `unknown` | fixed |
 | M-02 | `src/application/core/handlers.ts` | 101-103 | `register` called without generics — `TInput` defaults to `unknown` | fixed |
 | M-03 | `tests/integration/repository.test.ts` | 42-56 | `captureInput` object has no explicit type annotation | fixed |
-| M-04 | `tests/integration/repository.test.ts` | 128-129 | `explanations`/`examples` object literals have no type annotation | pending |
-| M-05 | `tests/unit/infrastructure/messaging.test.ts` | 101-103 | `payload` and `envelope` callback params have no explicit types | pending |
-| M-06 | `tests/unit/infrastructure/messaging.test.ts` | 181-182 | `register('test/a', async () => ok('1', undefined))` — no typed params | pending |
-| M-07 | `tests/unit/domain/schemas.test.ts` | 29 | Positive test cases have no explicit type annotations on object literals | pending |
-| M-08 | `entrypoints/popup/App.tsx` | 3 | `export default function App()` — missing return type annotation | pending |
-| M-09 | `entrypoints/sidepanel/App.tsx` | 3 | Missing return type annotation | pending |
-| M-10 | `entrypoints/dashboard/App.tsx` | 25 | Missing return type annotation | pending |
-| M-11 | `entrypoints/dashboard/routes/*.tsx` | 3 (all) | All 9 route components missing return type annotations | pending |
-| M-12 | `src/infrastructure/db/transactions.ts` | 176 | `origin: 'web_page'` hardcoded for headword — `CreateCardInput` doesn't allow specifying headword origin | pending |
+| M-04 | `tests/integration/repository.test.ts` | 128-129 | `explanations`/`examples` object literals have no type annotation | fixed |
+| M-05 | `tests/unit/infrastructure/messaging.test.ts` | 101-103 | `payload` and `envelope` callback params have no explicit types | fixed |
+| M-06 | `tests/unit/infrastructure/messaging.test.ts` | 181-182 | `register('test/a', async () => ok('1', undefined))` — no typed params | fixed |
+| M-07 | `tests/unit/domain/schemas.test.ts` | 29 | Positive test cases have no explicit type annotations on object literals | fixed |
+| M-08 | `entrypoints/popup/App.tsx` | 3 | `export default function App()` — missing return type annotation | fixed |
+| M-09 | `entrypoints/sidepanel/App.tsx` | 3 | Missing return type annotation | fixed |
+| M-10 | `entrypoints/dashboard/App.tsx` | 25 | Missing return type annotation | fixed |
+| M-11 | `entrypoints/dashboard/routes/*.tsx` | 3 (all) | All 9 route components missing return type annotations | fixed |
+| M-12 | `src/infrastructure/db/transactions.ts` | 176 | `origin: 'web_page'` hardcoded for headword — `CreateCardInput` doesn't allow specifying headword origin | fixed |
 
 ---
 

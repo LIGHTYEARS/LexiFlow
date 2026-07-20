@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Settings() {
+export default function Settings(): React.JSX.Element {
   return (
     <div>
       <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>Settings</h2>

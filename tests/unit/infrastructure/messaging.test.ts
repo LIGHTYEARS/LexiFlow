@@ -5,6 +5,7 @@ import {
   fail,
   createError,
   MAX_MESSAGE_PAYLOAD_BYTES,
+  type MessageEnvelope,
 } from '@shared/protocol/envelope';
 import { messageRegistry } from '@infra/messaging/message-registry';
 import { validateSender, validatePayloadSize, mapError } from '@infra/messaging/browser-runtime';
@@ -98,7 +99,7 @@ describe('Message Registry', () => {
   });
 
   it('registers and handles a message', async () => {
-    messageRegistry.register('test/echo', async (payload, envelope) => {
+    messageRegistry.register('test/echo', async (payload: unknown, envelope: MessageEnvelope) => {
       return ok(envelope.requestId, payload);
     });
 
@@ -178,8 +179,8 @@ describe('Message Registry', () => {
   });
 
   it('reports registered types', () => {
-    messageRegistry.register('test/a', async () => ok('1', undefined));
-    messageRegistry.register('test/b', async () => ok('1', undefined));
+    messageRegistry.register<unknown, undefined>('test/a', async () => ok('1', undefined));
+    messageRegistry.register<unknown, undefined>('test/b', async () => ok('1', undefined));
     expect(messageRegistry.getRegisteredTypes()).toContain('test/a');
     expect(messageRegistry.getRegisteredTypes()).toContain('test/b');
     expect(messageRegistry.has('test/a')).toBe(true);

@@ -150,10 +150,12 @@ export type DedupPreview = {
   suggestions: DedupSuggestion[];
 };
 
+export type ApplyDecisionAction = 'save' | 'save-to-inbox' | 'skip' | 'merge';
+
 export type ApplyDecisionCommand = {
   captureId: string;
   suggestionRevision: number;
-  action: string;
+  action: ApplyDecisionAction;
   confirmationToken?: string;
 };
 
