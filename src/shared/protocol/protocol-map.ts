@@ -428,13 +428,23 @@ export type SitePolicyView = {
 };
 
 /**
+ * Capture destination — where a new capture is routed by default.
+ * Keep in sync with the `automation.newCaptureDestination` enum in
+ * settings-schema.ts.
+ */
+export type CaptureDestination = 'inbox' | 'library';
+
+/**
  * User settings view — derived from the stored settings schema but with
  * `credentialRef` stripped (security: never expose credential references
  * to content scripts or extension UI) and a derived `hasCredential` flag
  * added so callers know whether a credential is configured.
  */
-export type UserSettingsView = Omit<UserSettings, 'model'> & {
+export type UserSettingsView = Omit<UserSettings, 'model' | 'automation'> & {
   model: Omit<UserSettings['model'], 'credentialRef'> & { hasCredential: boolean };
+  automation: Omit<UserSettings['automation'], 'newCaptureDestination'> & {
+    newCaptureDestination: CaptureDestination;
+  };
 };
 
 export type SettingsUpdateCommand = {

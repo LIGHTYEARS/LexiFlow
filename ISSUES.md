@@ -215,11 +215,11 @@ All in `src/shared/protocol/protocol-map.ts` unless noted:
 | S-09 | protocol-map.ts | 286 | `confirmedTypes: string[]` in `AnnotateErrorCommand` | `ErrorType[]` enum array | fixed |
 | S-10 | protocol-map.ts | 308 | `type: string` in `AiTaskRequest` | task type literal union | fixed |
 | S-11 | protocol-map.ts | 316 | `state: string` in `AiTaskSnapshot` | task state literal union | fixed |
-| S-12 | protocol-map.ts | 345 | `newCaptureDestination: string` in `UserSettingsView` | destination literal union | pending |
-| S-13 | content-ui/ExplanationPopover.tsx | 17 | `type?: string` | `CardType` literal union | pending |
-| S-14 | content-ui/ExplanationPopover.tsx | 24 | `relation: string` | `CardRelationType` literal union | pending |
-| S-15 | application/core/handlers.ts | 104 | `destination: string` (cast) | `ProtocolMap` literal union `'dashboard'|'review'|'inbox'|'settings'` | pending |
-| S-16 | domain/inbox/inbox.model.ts | 14-20 | `failure.code` uses `z.string()` — should be error-code enum | pending |
+| S-12 | protocol-map.ts | 345 | `newCaptureDestination: string` in `UserSettingsView` | destination literal union | fixed |
+| S-13 | content-ui/ExplanationPopover.tsx | 17 | `type?: string` | `CardType` literal union | fixed |
+| S-14 | content-ui/ExplanationPopover.tsx | 24 | `relation: string` | `CardRelationType` literal union | fixed |
+| S-15 | application/core/handlers.ts | 104 | `destination: string` (cast) | `ProtocolMap` literal union `'dashboard'|'review'|'inbox'|'settings'` | fixed |
+| S-16 | domain/inbox/inbox.model.ts | 14-20 | `failure.code` uses `z.string()` — should be error-code enum | fixed |
 
 ---
 
@@ -229,11 +229,11 @@ All in `src/domain/types.ts`:
 
 | ID | Type | Line(s) | Description | Status |
 |---|---|---|---|---|
-| T-01 | `EntityId` | 8 | Never imported by any model file — all use inline `z.string().uuid()` | pending |
-| T-02 | `CardType` | 11 | Never imported — redefined inline in `card.model.ts` | pending |
-| T-03 | `CardStatus` | 14 | Never imported — redefined inline in `card.model.ts` | pending |
-| T-04 | `ContentOrigin` | 17 | Never imported — redefined inline in `card.model.ts`, `tag.model.ts` | pending |
-| T-05 | `ConfidenceLabel` | 24-28 | Never used anywhere — no schema references it | pending |
+| T-01 | `EntityId` | 8 | Never imported by any model file — all use inline `z.string().uuid()` | fixed |
+| T-02 | `CardType` | 11 | Never imported — redefined inline in `card.model.ts` | fixed |
+| T-03 | `CardStatus` | 14 | Never imported — redefined inline in `card.model.ts` | fixed |
+| T-04 | `ContentOrigin` | 17 | Never imported — redefined inline in `card.model.ts`, `tag.model.ts` | fixed |
+| T-05 | `ConfidenceLabel` | 24-28 | Never used anywhere — no schema references it | fixed |
 | T-06 | `ProvenancedText` | 35-41 | Never imported — shape duplicated inline 4 times in `card.model.ts` | pending |
 | T-07 | `CardRelationType` | 46-53 | Never imported — redefined inline in `tag.model.ts` | pending |
 | T-08 | `RelationDirection` | 60 | Never imported — redefined inline in `tag.model.ts` | pending |

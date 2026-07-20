@@ -1,4 +1,5 @@
 import React from 'react';
+import type { CardType, CardRelationType } from '@domain/types';
 
 /**
  * ExplanationPopover — the explanation popover shown after explicit trigger.
@@ -14,13 +15,13 @@ import React from 'react';
 export type PopoverState = 'loading' | 'result' | 'failure';
 
 export interface ExplanationContent {
-  type?: string;
+  type?: CardType;
   chineseMeaning?: string;
   englishMeaning?: string;
   fullExplanation?: string;
   contextMeaning?: string;
   examples?: string[];
-  similarCards?: Array<{ id: string; text: string; relation: string }>;
+  similarCards?: Array<{ id: string; text: string; relation: CardRelationType }>;
 }
 
 export interface ExplanationPopoverProps {

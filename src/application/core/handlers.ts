@@ -126,7 +126,7 @@ export function registerCoreHandlers(): void {
     if (!payload || typeof payload !== 'object' || !('destination' in payload) || typeof (payload as any).destination !== 'string') {
       return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
     }
-    const { destination } = payload as { destination: string; tabId?: number };
+    const { destination } = payload as { destination: 'dashboard' | 'review' | 'inbox' | 'settings'; tabId?: number };
 
     const validDestinations = ['dashboard', 'review', 'inbox', 'settings'];
     if (!validDestinations.includes(destination)) {

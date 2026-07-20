@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+import type { EntityId, CardType, CardStatus, ContentOrigin } from '../types';
+
+export type { EntityId, CardType, CardStatus, ContentOrigin };
+
 /**
  * A text value with provenance tracking.
  * Shared schema reused across headword, explanations, examples, notes.

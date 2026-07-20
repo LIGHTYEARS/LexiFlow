@@ -1,4 +1,30 @@
 import { z } from 'zod';
+import type { ConfidenceLabel } from '../types';
+
+export type { ConfidenceLabel };
+
+/**
+ * Failure codes for inbox item failures.
+ * Keep in sync with AppErrorCode in @shared/protocol/envelope.
+ */
+export type FailureCode =
+  | 'INVALID_INPUT'
+  | 'NOT_FOUND'
+  | 'CONFLICT'
+  | 'PERMISSION_DENIED'
+  | 'TIMEOUT'
+  | 'INTERNAL'
+  | 'STORAGE_FAILURE';
+
+const FAILURE_CODES: readonly [FailureCode, ...FailureCode[]] = [
+  'INVALID_INPUT',
+  'NOT_FOUND',
+  'CONFLICT',
+  'PERMISSION_DENIED',
+  'TIMEOUT',
+  'INTERNAL',
+  'STORAGE_FAILURE',
+];
 
 /**
  * InboxItem — a safe buffer between capture and the formal knowledge base.
@@ -35,7 +61,7 @@ export const InboxItemSchema = z.object({
   suggestions: z.array(SuggestionSchema).optional(),
   failure: z
     .object({
-      code: z.string(),
+      code: z.enum(FAILURE_CODES),
       userMessage: z.string(),
       retryable: z.boolean(),
     })

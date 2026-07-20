@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+import type { ContentOrigin } from '../types';
+
+export type { ContentOrigin };
+
 /**
  * Tag entity. See PRD §11.4 and technical-design/04 §5.4.
  */
