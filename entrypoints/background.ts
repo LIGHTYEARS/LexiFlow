@@ -7,6 +7,8 @@ import {
   getAuthorizedOrigins,
 } from '@infra/permissions/page-access-policy';
 import { registerCoreHandlers } from '@app/core/handlers';
+import { registerAiTaskHandlers } from '@app/ai-task/handlers';
+import { markInterruptedTasks } from '@app/ai-task/coordinator';
 import { runMigrations } from '@infra/db/migrations';
 import { fail, createError } from '@shared/protocol/envelope';
 
@@ -29,6 +31,10 @@ export default defineBackground(() => {
 
   // ── Register all message handlers ──
   registerCoreHandlers();
+  registerAiTaskHandlers();
+
+  // ── Mark in-flight tasks from previous session as INTERRUPTED ──
+  markInterruptedTasks();
 
   // ── Startup: Register content scripts for already-authorized origins ──
   getAuthorizedOrigins().then((origins) => {

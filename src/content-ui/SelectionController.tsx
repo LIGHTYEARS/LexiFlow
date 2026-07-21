@@ -11,6 +11,8 @@ import {
   type ExplanationContent,
 } from './ExplanationPopover';
 import type { PageSessionRef } from '@shared/protocol/page-session';
+import { sendMessage } from '@infra/messaging/browser-runtime';
+import type { AiTaskSnapshot } from '@shared/protocol/protocol-map';
 
 /**
  * SelectionController — orchestrates selection detection, trigger button,
@@ -30,7 +32,9 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
   const [, setContext] = useState<ContextEvidence | null>(null);
   const [explanationContent, setExplanationContent] =
     useState<ExplanationContent | null>(null);
-  const [, setPopoverState] = useState<'loading' | 'result' | 'failure'>('loading');
+  const [popoverState, setPopoverState] = useState<'loading' | 'result' | 'failure'>('loading');
+  const popoverStateRef = useRef(popoverState);
+  popoverStateRef.current = popoverState;
 
   const observerRef = useRef<SelectionObserver | null>(null);
   const [state, send] = useMachine(selectionMachine);
@@ -66,22 +70,68 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
       setContext(extractedContext);
       send({ type: 'CONTEXT_READY', context: extractedContext });
 
-      // M4: Send explain request to background via message
-      // For M3, simulate with a delay to show loading state
+      // Send explain request to background via message
       setPopoverState('loading');
 
-      // Placeholder: actual model request in M4
-      setTimeout(() => {
-        setExplanationContent({
-          type: 'word',
-          chineseMeaning: '（模型解释将在 M4 实现）',
-          englishMeaning: '(Model explanation will be implemented in M4)',
-          contextMeaning: '文中含义：此处指...',
-          examples: ['Example sentence here.'],
-        });
-        setPopoverState('result');
-        send({ type: 'EXPLAIN_SUCCEEDED' });
-      }, 800);
+      const requestId = crypto.randomUUID();
+      sendMessage<{ accepted: boolean; taskId: string }>('selection/explain', {
+        requestId,
+        selection: snapshot.text,
+        context: JSON.stringify(extractedContext),
+        source: {
+          origin: snapshot.page.urlAtCapture,
+          urlWithoutFragment: snapshot.page.urlAtCapture,
+        },
+        task: 'quick-explain',
+      }).then((response) => {
+        if (!response.accepted) {
+          setPopoverState('failure');
+          send({ type: 'EXPLAIN_FAILED' });
+          return;
+        }
+
+        // Poll for task completion
+        const taskId = response.taskId;
+        const pollInterval = setInterval(async () => {
+          try {
+            const snapshot = await sendMessage<AiTaskSnapshot | null>('aiTask/getStatus', { taskId });
+            if (!snapshot) {
+              return;
+            }
+
+            if (snapshot.state === 'succeeded' && snapshot.result) {
+              clearInterval(pollInterval);
+              // The result is an AiTaskResult with .value containing the explanation
+              const result = snapshot.result as { value?: ExplanationContent };
+              const content = result.value || (snapshot.result as ExplanationContent);
+              setExplanationContent(content);
+              setPopoverState('result');
+              send({ type: 'EXPLAIN_SUCCEEDED' });
+            } else if (snapshot.state === 'failed' || snapshot.state === 'cancelled') {
+              clearInterval(pollInterval);
+              setPopoverState('failure');
+              send({ type: 'EXPLAIN_FAILED' });
+            }
+            // For streaming/validating states, continue polling
+          } catch {
+            clearInterval(pollInterval);
+            setPopoverState('failure');
+            send({ type: 'EXPLAIN_FAILED' });
+          }
+        }, 500);
+
+        // Timeout after 30 seconds
+        setTimeout(() => {
+          clearInterval(pollInterval);
+          if (popoverStateRef.current === 'loading') {
+            setPopoverState('failure');
+            send({ type: 'EXPLAIN_FAILED' });
+          }
+        }, 30000);
+      }).catch(() => {
+        setPopoverState('failure');
+        send({ type: 'EXPLAIN_FAILED' });
+      });
     }
   }, [snapshot, send]);
 

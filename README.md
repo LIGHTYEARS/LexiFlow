@@ -67,9 +67,7 @@ See [docs/technical-design/01-architecture-and-technology-baseline.md](docs/tech
 | M1 | Runtime & Communication Layer | ✅ Done |
 | M2 | Data Layer & Domain Model | ✅ Done |
 | M3 | Selection Trigger & Context Extraction | ✅ Done |
-| M4 | AI Task Execution | ⬜ Planned |
-| M3 | Selection Trigger & Context Extraction | ⬜ Planned |
-| M4 | AI Task Execution | ⬜ Planned |
+| M4 | AI Task Execution | 🚧 In Progress |
 | M5 | Capture, Dedup & Inbox | ⬜ Planned |
 | M6 | Knowledge Library & Search | ⬜ Planned |
 | M7 | FSRS Review & Error Tracking | ⬜ Planned |

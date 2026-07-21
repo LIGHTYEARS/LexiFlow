@@ -92,7 +92,7 @@ export interface ProtocolMap {
   'aiTask/start': (input: AiTaskRequest) => AppResult<{ accepted: boolean; taskId: string }>;
   'aiTask/cancel': (
     input: { taskId: string; reason?: string },
-  ) => AppResult<{ state: string }>;
+  ) => AppResult<{ state: AiTaskState }>;
   'aiTask/getStatus': (input: { taskId: string }) => AppResult<AiTaskSnapshot>;
   'aiTask/testConnection': (
     input: { profileId: string },
@@ -395,7 +395,24 @@ export type FsrsImpactPreview = {
   summary: string;
 };
 
-export type AiTaskType = 'quick-explain' | 'full-explain' | 'similar-cards' | 'context-extract';
+// ── AI Task Types ──
+// Aligned with docs/technical-design/05-litellm-ai-task-execution.md §5
+
+export type AiTaskType =
+  | 'quick-explain'
+  | 'full-analysis'
+  | 'inbox-reanalysis'
+  | 'inbox-organize'
+  | 'practice-generate';
+
+export type AiTaskState =
+  | 'queued'
+  | 'streaming'
+  | 'validating'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled'
+  | 'superseded';
 
 export type AiTaskRequest = {
   taskId: string;
@@ -408,7 +425,16 @@ export type AiTaskRequest = {
   promptVersion: string;
 };
 
-export type AiTaskState = 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+export type AiTaskResult<T = unknown> = {
+  taskId: string;
+  schemaVersion: number;
+  value: T;
+  provenance: {
+    kind: 'model-generated';
+    taskId: string;
+    promptVersion: string;
+  };
+};
 
 export type AiTaskSnapshot = {
   taskId: string;
