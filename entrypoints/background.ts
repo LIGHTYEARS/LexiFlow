@@ -100,6 +100,8 @@ export default defineBackground(() => {
     if (details.reason === 'install') {
       console.log('[LexiFlow] Extension installed');
       // Settings are initialized lazily on first read
+      // Open settings page on first install so user can configure LiteLLM
+      chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html#/settings') });
     } else if (details.reason === 'update') {
       console.log('[LexiFlow] Extension updated to', chrome.runtime.getManifest().version);
       // Migration is handled by Dexie versioning + settings schema version check

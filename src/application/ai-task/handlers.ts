@@ -176,8 +176,10 @@ export function registerAiTaskHandlers(): void {
       task: string;
     };
 
-    // Resolve model profile (use default)
-    const profile = await resolveModelProfile('default');
+    // Resolve model profile using the task type as the profile ID
+    // (consistent with how the settings page stores task models)
+    const modelProfileId = input.task || 'quick-explain';
+    const profile = await resolveModelProfile(modelProfileId);
     if (!profile) {
       return fail(
         envelope.requestId,
@@ -203,12 +205,12 @@ export function registerAiTaskHandlers(): void {
         selectedText: input.selection,
         context: input.context,
       },
-      modelProfileId: 'default',
+      modelProfileId,
       promptVersion: 'quick-explain-v1',
     };
 
     const result = await startTask(taskRequest, {
-      id: 'default',
+      id: modelProfileId,
       modelId: profile.modelId,
       baseUrl: profile.baseUrl,
       apiKey: profile.apiKey,

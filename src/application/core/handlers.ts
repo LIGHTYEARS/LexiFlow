@@ -1,6 +1,14 @@
 import { messageRegistry } from '@infra/messaging/message-registry';
 import { ok, fail, createError } from '@shared/protocol/envelope';
-import { getSitePolicyView, getSettings } from '@infra/storage/settings-gateway';
+import {
+  getSitePolicyView,
+  getSettings,
+  updateSettings,
+  saveCredential,
+} from '@infra/storage/settings-gateway';
+import type { UserSettings } from '@infra/storage/settings-schema';
+import { saveCaptureTransaction } from '@infra/db/transactions';
+import type { SaveCaptureInput } from '@infra/db/transactions';
 import {
   deriveOriginPattern,
   hasPageAccess,
@@ -9,6 +17,10 @@ import {
   isSupportedPage,
   injectContentScriptIntoTab,
 } from '@infra/permissions/page-access-policy';
+import {
+  validateModelBaseUrl,
+  requestModelAccess,
+} from '@infra/permissions/model-origin-gateway';
 import type {
   SitePolicyQuery,
   SitePolicyView,
@@ -57,6 +69,74 @@ export function registerCoreHandlers(): void {
       },
     });
   });
+
+  // ── Settings: update (partial patch) ──
+  messageRegistry.register<{ patch: Partial<UserSettings> }, { updated: boolean }>(
+    'settings/update',
+    async (payload: unknown, envelope, sender) => {
+      // Only allow from extension pages (not content scripts)
+      if (sender.tab && sender.url?.startsWith('http')) {
+        return fail(
+          envelope.requestId,
+          createError('PERMISSION_DENIED', 'Settings not available to content scripts', false),
+        );
+      }
+      if (!payload || typeof payload !== 'object' || !('patch' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      const { patch } = payload as { patch: Partial<UserSettings> };
+      const result = await updateSettings(patch);
+      if (!result.success) {
+        return fail(envelope.requestId, result.error || createError('STORAGE_FAILURE', 'Failed to update settings', true));
+      }
+      return ok(envelope.requestId, { updated: true });
+    },
+  );
+
+  // ── Settings: save credential (API key) ──
+  messageRegistry.register<{ type: 'litellm-api-key'; value: string }, { success: boolean; credentialRef?: string }>(
+    'settings/saveCredential',
+    async (payload: unknown, envelope, sender) => {
+      if (sender.tab && sender.url?.startsWith('http')) {
+        return fail(
+          envelope.requestId,
+          createError('PERMISSION_DENIED', 'Credentials not available to content scripts', false),
+        );
+      }
+      if (!payload || typeof payload !== 'object' || !('value' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      const { type, value } = payload as { type: 'litellm-api-key'; value: string };
+      const result = await saveCredential(type, value);
+      if (!result.success) {
+        return fail(envelope.requestId, result.error || createError('STORAGE_FAILURE', 'Failed to save credential', true));
+      }
+      return ok(envelope.requestId, { success: true, credentialRef: result.credentialRef });
+    },
+  );
+
+  // ── Settings: request model origin permission ──
+  // Must be called from a user gesture (click on "Save" or "Test Connection").
+  messageRegistry.register<{ baseUrl: string }, { granted: boolean; originPattern?: string }>(
+    'settings/requestModelAccess',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('baseUrl' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      const { baseUrl } = payload as { baseUrl: string };
+
+      // Validate the base URL
+      const validation = validateModelBaseUrl(baseUrl);
+      if (!validation.valid) {
+        return fail(envelope.requestId, validation.error);
+      }
+
+      // Request Chrome host permission for the origin
+      const originPattern = `${validation.origin}/*`;
+      const result = await requestModelAccess(originPattern);
+      return ok(envelope.requestId, result);
+    },
+  );
 
   // ── Page access: enable current site ──
   messageRegistry.register<{ url: string; tabId?: number }, { granted: boolean; originPattern: string }>('page/enable-site', async (payload: unknown, envelope) => {
@@ -164,5 +244,28 @@ export function registerCoreHandlers(): void {
       cardCount: 0,
       inboxCount: 0,
     });
+  });
+
+  // ── Capture: save selection as card or to inbox ──
+  messageRegistry.register<SaveCaptureInput & { idempotencyKey?: string }, {
+    captureId: string;
+    status: string;
+    cardId?: string;
+    message: string;
+  }>('capture/save', async (payload: unknown, envelope) => {
+    if (!payload || typeof payload !== 'object') {
+      return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+    }
+    const input = payload as SaveCaptureInput;
+    if (!input.selectedText || !input.pageUrl) {
+      return fail(envelope.requestId, createError('INVALID_INPUT', 'Missing required fields', false));
+    }
+    try {
+      const result = await saveCaptureTransaction(input);
+      return ok(envelope.requestId, result);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Save failed';
+      return fail(envelope.requestId, createError('INTERNAL', msg, false));
+    }
   });
 }

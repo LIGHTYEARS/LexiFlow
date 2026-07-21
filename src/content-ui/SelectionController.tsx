@@ -231,13 +231,64 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
             content={explanationContent || undefined}
             error={undefined}
             position={popoverPosition}
-            onSave={() => {
-              // M5: send save command to background
-              console.log('[LexiFlow] Save card');
+            onSave={async () => {
+              // Save as card: send capture/save request to background
+              try {
+                const url = snapshot.page.urlAtCapture;
+                const domain = url.split('/')[2] || url;
+                const result = await sendMessage<{
+                  captureId: string;
+                  status: string;
+                  cardId?: string;
+                  message: string;
+                }>('capture/save', {
+                  requestId: crypto.randomUUID(),
+                  selectedText: snapshot.text,
+                  context: {
+                    pageTitle: document.title,
+                    url,
+                    extractedAt: new Date().toISOString(),
+                    quality: 'full',
+                  },
+                  pageUrl: url,
+                  pageTitle: document.title,
+                  domain,
+                  requestedAction: 'save',
+                  idempotencyKey: crypto.randomUUID(),
+                });
+                console.log('[LexiFlow] Saved as card:', result.status);
+              } catch (err) {
+                console.error('[LexiFlow] Save failed:', err);
+              }
             }}
-            onSaveToInbox={() => {
-              // M5: send save-to-inbox command to background
-              console.log('[LexiFlow] Save to Inbox');
+            onSaveToInbox={async () => {
+              // Save to inbox
+              try {
+                const url = snapshot.page.urlAtCapture;
+                const domain = url.split('/')[2] || url;
+                const result = await sendMessage<{
+                  captureId: string;
+                  status: string;
+                  message: string;
+                }>('capture/save', {
+                  requestId: crypto.randomUUID(),
+                  selectedText: snapshot.text,
+                  context: {
+                    pageTitle: document.title,
+                    url,
+                    extractedAt: new Date().toISOString(),
+                    quality: 'full',
+                  },
+                  pageUrl: url,
+                  pageTitle: document.title,
+                  domain,
+                  requestedAction: 'save-to-inbox',
+                  idempotencyKey: crypto.randomUUID(),
+                });
+                console.log('[LexiFlow] Saved to inbox:', result.status);
+              } catch (err) {
+                console.error('[LexiFlow] Save to inbox failed:', err);
+              }
             }}
             onExpand={() => {
               // Open dashboard card detail

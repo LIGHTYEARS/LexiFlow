@@ -56,10 +56,46 @@ export default function Settings(): React.JSX.Element {
     setSaving(true);
     setStatus({ type: 'idle', message: '' });
     try {
+      // Step 1: If a new API key was entered, save it as a credential first
+      let credentialRef: string | undefined;
+      if (apiKey) {
+        const credResult = await sendMessage<
+          AppResult<{ success: boolean; credentialRef?: string }>
+        >('settings/saveCredential', {
+          type: 'litellm-api-key',
+          value: apiKey,
+        });
+        if (!credResult.ok || !credResult.data.success || !credResult.data.credentialRef) {
+          setStatus({
+            type: 'error',
+            message: credResult.ok ? 'Failed to save API key.' : credResult.error.userMessage,
+          });
+          return;
+        }
+        credentialRef = credResult.data.credentialRef;
+      }
+
+      // Step 2: Request model origin permission (requires user gesture — this is one)
+      if (baseUrl) {
+        const permResult = await sendMessage<
+          AppResult<{ granted: boolean; originPattern?: string }>
+        >('settings/requestModelAccess', { baseUrl });
+        if (!permResult.ok || !permResult.data.granted) {
+          setStatus({
+            type: 'error',
+            message: permResult.ok
+              ? 'Permission for model origin was not granted.'
+              : permResult.error.userMessage,
+          });
+          return;
+        }
+      }
+
+      // Step 3: Save settings with the credential reference (not the raw key)
       const patch: Partial<UserSettings> = {
         model: {
           baseUrl,
-          credentialRef: apiKey || undefined,
+          credentialRef: credentialRef || undefined,
           taskModels: { [DEFAULT_PROFILE_ID]: modelId },
         },
       };
@@ -87,6 +123,22 @@ export default function Settings(): React.JSX.Element {
   async function handleTestConnection(): Promise<void> {
     setConnectionStatus({ type: 'testing', message: 'Testing connection…' });
     try {
+      // Request model origin permission first (user gesture)
+      if (baseUrl) {
+        const permResult = await sendMessage<
+          AppResult<{ granted: boolean; originPattern?: string }>
+        >('settings/requestModelAccess', { baseUrl });
+        if (!permResult.ok || !permResult.data.granted) {
+          setConnectionStatus({
+            type: 'error',
+            message: permResult.ok
+              ? 'Permission for model origin was not granted.'
+              : permResult.error.userMessage,
+          });
+          return;
+        }
+      }
+
       const result = await sendMessage<AppResult<ConnectionTestResult>>(
         'aiTask/testConnection',
         { profileId: DEFAULT_PROFILE_ID },
