@@ -297,6 +297,21 @@ export function getTaskSnapshot(taskId: string): {
 }
 
 /**
+ * Find an active task's ID by its requestId.
+ * Used by the selection/cancel handler to locate a task started from a
+ * selection/explain request and cancel it. Returns undefined if no active
+ * task matches the requestId.
+ */
+export function findTaskIdByRequestId(requestId: string): string | undefined {
+  for (const [taskId, state] of activeTasks) {
+    if (state.requestId === requestId) {
+      return taskId;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Map an unknown error to a stable AppError.
  * Never exposes internal details, credentials, or raw response bodies.
  */

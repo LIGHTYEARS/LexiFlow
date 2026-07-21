@@ -1,7 +1,7 @@
 import { messageRegistry } from '@infra/messaging/message-registry';
 import { getSettings, getCredentialValue } from '@infra/storage/settings-gateway';
 import { canMakeModelRequest } from '@infra/permissions/model-origin-gateway';
-import { startTask, cancelTask, getTaskSnapshot, getLatestEvent } from './coordinator';
+import { startTask, cancelTask, getTaskSnapshot, getLatestEvent, findTaskIdByRequestId } from './coordinator';
 import { testConnection as testModelConnection } from '@adapters/litellm/provider-factory';
 import type {
   AiTaskRequest,
@@ -218,4 +218,22 @@ export function registerAiTaskHandlers(): void {
 
     return ok(envelope.requestId, result);
   });
+
+  // ── selection/cancel ──
+  // Cancels an active AI task associated with a selection/explain request.
+  // Finds the task by its requestId and calls cancelTask.
+  messageRegistry.register<{ requestId: string }, { cancelled: boolean }>(
+    'selection/cancel',
+    async (payload, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('requestId' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      const { requestId } = payload as { requestId: string };
+      const taskId = findTaskIdByRequestId(requestId);
+      if (taskId) {
+        await cancelTask(taskId);
+      }
+      return ok(envelope.requestId, { cancelled: true });
+    },
+  );
 }

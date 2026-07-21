@@ -4,12 +4,18 @@ import { validateEnvelope } from '@shared/protocol/envelope';
 import type { MessageEnvelope } from '@shared/protocol/envelope';
 import { createPageSessionRef } from '@shared/protocol/page-session';
 import { SelectionController } from '@content-ui/SelectionController';
+import { sendMessage } from '@infra/messaging/browser-runtime';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 
 // LexiFlow Content Script
 // Injects ShadowRoot UI into authorized pages.
 // See technical-design/02 §8.1 and technical-design/03.
+
+// Module-level reference to the ShadowRoot UI host element, used to dispatch
+// custom events to the SelectionController for commands that originate from
+// Chrome's command API (Alt+I, Alt+R, etc.) rather than keyboard events.
+let hostElement: HTMLElement | null = null;
 
 export default defineContentScript({
   // No static matches — content script is registered at runtime
@@ -37,6 +43,10 @@ export default defineContentScript({
       position: 'inline',
       append: 'last',
       onMount(uiContainer) {
+        // Store host element reference so handleCommand can dispatch
+        // custom events to the SelectionController.
+        hostElement = uiContainer;
+
         // Render the SelectionController into the ShadowRoot
         const root = createRoot(uiContainer);
         root.render(
@@ -95,9 +105,89 @@ async function getTabId(): Promise<number> {
 
 /**
  * Handle keyboard commands forwarded from background.
+ *
+ * Commands arrive from Chrome's command API (Alt+L, Alt+I, Alt+R, Alt+Escape)
+ * via the background script, which forwards them as `command/{name}` messages.
+ *
+ * - open-explanation (Alt+L): dispatched to the SelectionController via a
+ *   custom DOM event. The SelectionController also handles Alt+L directly via
+ *   its own keydown listener, so this covers the command-API path.
+ * - save-to-inbox (Alt+I): captures the current page selection and sends a
+ *   `capture/save` message with `requestedAction: 'save-to-inbox'`.
+ * - start-review (Alt+R): opens the dashboard review page in a new tab.
+ * - close-ui (Alt+Escape): dispatched to the SelectionController via a custom
+ *   DOM event. The SelectionController also handles Escape directly.
  */
 function handleCommand(command: string): void {
   console.log('[LexiFlow] Command received in content:', command);
-  // Command handling is done via keyboard events in SelectionController
-  // (Alt+L triggers explanation, Escape closes)
+
+  switch (command) {
+    case 'open-explanation': {
+      // The SelectionController handles Alt+L via its own keydown listener.
+      // Dispatch a custom event so the command-API path also triggers it.
+      if (hostElement) {
+        hostElement.dispatchEvent(new CustomEvent('lexiflow:open-explanation'));
+      }
+      break;
+    }
+
+    case 'save-to-inbox': {
+      // Capture the current selection from the page and save to inbox.
+      const selection = window.getSelection();
+      const selectedText = selection?.toString().trim() ?? '';
+      if (!selectedText) {
+        console.log('[LexiFlow] No selection to save to inbox');
+        break;
+      }
+
+      const url = window.location.href;
+      const domain = url.split('/')[2] || url;
+
+      sendMessage<{
+        captureId: string;
+        status: string;
+        cardId?: string;
+        message: string;
+      }>('capture/save', {
+        requestId: crypto.randomUUID(),
+        selectedText,
+        context: {
+          pageTitle: document.title,
+          url,
+          extractedAt: new Date().toISOString(),
+          quality: 'full',
+        },
+        pageUrl: url,
+        pageTitle: document.title,
+        domain,
+        requestedAction: 'save-to-inbox',
+        idempotencyKey: crypto.randomUUID(),
+      })
+        .then((result) => {
+          console.log('[LexiFlow] Saved to inbox:', result.status);
+        })
+        .catch((err) => {
+          console.error('[LexiFlow] Save to inbox failed:', err);
+        });
+      break;
+    }
+
+    case 'start-review': {
+      // Open the dashboard review page.
+      chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html#/review') });
+      break;
+    }
+
+    case 'close-ui': {
+      // The SelectionController handles Escape via its own keydown listener.
+      // Dispatch a custom event so the command-API path also triggers it.
+      if (hostElement) {
+        hostElement.dispatchEvent(new CustomEvent('lexiflow:close-ui'));
+      }
+      break;
+    }
+
+    default:
+      console.warn('[LexiFlow] Unknown command:', command);
+  }
 }

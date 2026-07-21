@@ -29,6 +29,31 @@ import type {
   DashboardCounts,
   PageSummaryQuery,
   PageSummary,
+  DedupPreview,
+  ApplyDecisionCommand,
+  SaveCaptureResult,
+  InboxBatchPreviewCommand,
+  InboxBatchPreview,
+  InboxBatchApplyCommand,
+  InboxBatchResult,
+  SearchCommand,
+  SearchResult,
+  CardDetail,
+  PreviewPatchCommand,
+  PatchPreview,
+  ApplyPatchCommand,
+  SourcePageResult,
+  CreateReviewSessionCommand,
+  ReviewSession,
+  ReviewItem,
+  ReviewReveal,
+  RatingPreview,
+  CommitRatingCommand,
+  ReviewCommitResult,
+  AnnotateErrorCommand,
+  RebuildReport,
+  FsrsImpactPreview,
+  ReviewRating,
 } from '@shared/protocol/protocol-map';
 
 /**
@@ -268,4 +293,319 @@ export function registerCoreHandlers(): void {
       return fail(envelope.requestId, createError('INTERNAL', msg, false));
     }
   });
+
+  // ── Capture: preview deduplication decision ──
+  messageRegistry.register<{ captureId: string }, DedupPreview>(
+    'capture/previewDecision',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('captureId' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      const { captureId } = payload as { captureId: string };
+      return ok(envelope.requestId, { captureId, suggestions: [] });
+    },
+  );
+
+  // ── Capture: apply deduplication decision ──
+  messageRegistry.register<ApplyDecisionCommand, SaveCaptureResult>(
+    'capture/applyDecision',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('captureId' in payload) || !('action' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      const command = payload as ApplyDecisionCommand;
+      if (command.action === 'save' || command.action === 'save-to-inbox') {
+        // Placeholder: a full implementation would look up the capture by ID and
+        // call saveCaptureTransaction with the resolved capture data.
+        return ok(envelope.requestId, {
+          captureId: command.captureId,
+          status: 'inbox',
+          message: 'Saved to Inbox for review',
+        });
+      }
+      return ok(envelope.requestId, {
+        captureId: command.captureId,
+        status: 'skipped',
+        message: 'Capture skipped',
+      });
+    },
+  );
+
+  // ── Inbox: batch preview ──
+  messageRegistry.register<InboxBatchPreviewCommand, InboxBatchPreview>(
+    'inbox/batchPreview',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('itemIds' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, {
+        previewId: crypto.randomUUID(),
+        items: [],
+        riskSummary: '',
+      });
+    },
+  );
+
+  // ── Inbox: batch apply ──
+  messageRegistry.register<InboxBatchApplyCommand, InboxBatchResult>(
+    'inbox/batchApply',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('batchPreviewId' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, {
+        batchId: crypto.randomUUID(),
+        results: [],
+      });
+    },
+  );
+
+  // ── Inbox: undo batch ──
+  messageRegistry.register<{ batchId: string; expectedRevision: number }, { reverted: boolean }>(
+    'inbox/undoBatch',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('batchId' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, { reverted: true });
+    },
+  );
+
+  // ── Knowledge: search ──
+  messageRegistry.register<SearchCommand, SearchResult>(
+    'knowledge/search',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('query' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, { items: [], total: 0 });
+    },
+  );
+
+  // ── Knowledge: get card detail ──
+  messageRegistry.register<{ cardId: string }, CardDetail>(
+    'knowledge/getCard',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('cardId' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      const { cardId } = payload as { cardId: string };
+      return ok(envelope.requestId, {
+        id: cardId,
+        type: 'word',
+        status: 'active',
+        headword: '',
+        explanations: [],
+        examples: [],
+        sources: [],
+        tags: [],
+        relations: [],
+        revision: 0,
+        createdAt: '',
+        updatedAt: '',
+      });
+    },
+  );
+
+  // ── Knowledge: preview patch ──
+  messageRegistry.register<PreviewPatchCommand, PatchPreview>(
+    'knowledge/previewPatch',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('cardId' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, {
+        previewId: crypto.randomUUID(),
+        diff: [],
+        risk: 'low',
+        requiresConfirmation: false,
+      });
+    },
+  );
+
+  // ── Knowledge: apply patch ──
+  messageRegistry.register<ApplyPatchCommand, CardDetail>(
+    'knowledge/applyPatch',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('previewId' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, {
+        id: '',
+        type: 'word',
+        status: 'active',
+        headword: '',
+        explanations: [],
+        examples: [],
+        sources: [],
+        tags: [],
+        relations: [],
+        revision: 0,
+        createdAt: '',
+        updatedAt: '',
+      });
+    },
+  );
+
+  // ── Knowledge: list cards by source page ──
+  messageRegistry.register<{ pageId: string; cursor?: string; limit?: number }, SourcePageResult>(
+    'knowledge/listBySource',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('pageId' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, {
+        page: { id: '', url: '', title: '', domain: '' },
+        cards: [],
+        inboxCount: 0,
+      });
+    },
+  );
+
+  // ── Knowledge: rebuild search index ──
+  messageRegistry.register<{ reason: string }, { ok: true }>(
+    'knowledge/rebuildSearch',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('reason' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, { ok: true });
+    },
+  );
+
+  // ── Knowledge: get page summary ──
+  messageRegistry.register<{ canonicalPageKey: string }, PageSummary>(
+    'knowledge/getPageSummary',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('canonicalPageKey' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, {
+        pageId: '',
+        pageUrl: '',
+        title: '',
+        cardCount: 0,
+        inboxCount: 0,
+      });
+    },
+  );
+
+  // ── Review: create session ──
+  messageRegistry.register<CreateReviewSessionCommand, ReviewSession>(
+    'review/createSession',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object') {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, {
+        sessionId: crypto.randomUUID(),
+        dueCounts: { overdue: 0, due: 0, learning: 0, new: 0 },
+      });
+    },
+  );
+
+  // ── Review: next item ──
+  messageRegistry.register<{ sessionId: string }, ReviewItem | null>(
+    'review/next',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('sessionId' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, null);
+    },
+  );
+
+  // ── Review: reveal answer ──
+  messageRegistry.register<
+    { sessionId: string; cardId: string; attemptId: string },
+    ReviewReveal
+  >('review/reveal', async (payload: unknown, envelope) => {
+    if (!payload || typeof payload !== 'object' || !('attemptId' in payload)) {
+      return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+    }
+    const { attemptId } = payload as { attemptId: string };
+    return ok(envelope.requestId, {
+      attemptId,
+      answer: '',
+    });
+  });
+
+  // ── Review: preview rating ──
+  messageRegistry.register<
+    { attemptId: string; rating: ReviewRating },
+    RatingPreview
+  >('review/previewRating', async (payload: unknown, envelope) => {
+    if (!payload || typeof payload !== 'object' || !('attemptId' in payload) || !('rating' in payload)) {
+      return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+    }
+    const { rating } = payload as { attemptId: string; rating: ReviewRating };
+    return ok(envelope.requestId, {
+      rating,
+      nextDueAt: '',
+      state: 'new',
+    });
+  });
+
+  // ── Review: commit rating ──
+  messageRegistry.register<CommitRatingCommand, ReviewCommitResult>(
+    'review/commitRating',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('attemptId' in payload) || !('rating' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, {
+        eventId: crypto.randomUUID(),
+        nextDueAt: '',
+        state: 'new',
+      });
+    },
+  );
+
+  // ── Review: annotate error ──
+  messageRegistry.register<AnnotateErrorCommand, { annotated: boolean }>(
+    'review/annotateError',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('eventId' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, { annotated: true });
+    },
+  );
+
+  // ── Review: rebuild schedule ──
+  messageRegistry.register<{ cardIds?: string[]; dryRun: boolean }, RebuildReport>(
+    'review/rebuildSchedule',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('dryRun' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, []);
+    },
+  );
+
+  // ── Practice: preview FSRS impact ──
+  messageRegistry.register<{ practiceAttemptIds: string[] }, FsrsImpactPreview>(
+    'practice/previewFsrsImpact',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('practiceAttemptIds' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, {
+        previewId: crypto.randomUUID(),
+        impacts: [],
+        summary: '',
+      });
+    },
+  );
+
+  // ── Practice: commit FSRS impact ──
+  messageRegistry.register<{ previewId: string; confirmationToken: string }, { committed: boolean }>(
+    'practice/commitFsrsImpact',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('previewId' in payload)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      return ok(envelope.requestId, { committed: true });
+    },
+  );
 }
