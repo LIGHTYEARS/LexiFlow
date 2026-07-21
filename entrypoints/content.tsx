@@ -1,7 +1,7 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { validateEnvelope } from '@shared/protocol/envelope';
-import type { MessageEnvelope } from '@shared/protocol/envelope';
+import type { MessageEnvelope, AppResult } from '@shared/protocol/envelope';
 import { createPageSessionRef } from '@shared/protocol/page-session';
 import { SelectionController } from '@content-ui/SelectionController';
 import { sendMessage } from '@infra/messaging/browser-runtime';
@@ -143,12 +143,12 @@ function handleCommand(command: string): void {
       const url = window.location.href;
       const domain = url.split('/')[2] || url;
 
-      sendMessage<{
+      sendMessage<AppResult<{
         captureId: string;
         status: string;
         cardId?: string;
         message: string;
-      }>('capture/save', {
+      }>>('capture/save', {
         requestId: crypto.randomUUID(),
         selectedText,
         context: {
@@ -164,7 +164,9 @@ function handleCommand(command: string): void {
         idempotencyKey: crypto.randomUUID(),
       })
         .then((result) => {
-          console.log('[LexiFlow] Saved to inbox:', result.status);
+          if (result.ok) {
+            console.log('[LexiFlow] Saved to inbox:', result.data.status);
+          }
         })
         .catch((err) => {
           console.error('[LexiFlow] Save to inbox failed:', err);

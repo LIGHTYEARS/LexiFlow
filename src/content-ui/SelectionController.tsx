@@ -12,6 +12,7 @@ import {
 } from './ExplanationPopover';
 import type { PageSessionRef } from '@shared/protocol/page-session';
 import { sendMessage } from '@infra/messaging/browser-runtime';
+import type { AppResult } from '@shared/protocol/envelope';
 import type { AiTaskEvent } from '@shared/protocol/protocol-map';
 
 /**
@@ -74,7 +75,7 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
       setPopoverState('loading');
 
       const requestId = crypto.randomUUID();
-      sendMessage<{ accepted: boolean; taskId: string }>('selection/explain', {
+      sendMessage<AppResult<{ accepted: boolean; taskId: string }>>('selection/explain', {
         requestId,
         selection: snapshot.text,
         context: JSON.stringify(extractedContext),
@@ -84,20 +85,21 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
         },
         task: 'quick-explain',
       }).then((response) => {
-        if (!response.accepted) {
+        if (!response.ok || !response.data.accepted) {
           setPopoverState('failure');
           send({ type: 'EXPLAIN_FAILED' });
           return;
         }
 
         // Poll for task completion via streaming events (every 300ms)
-        const taskId = response.taskId;
+        const taskId = response.data.taskId;
         const pollInterval = setInterval(async () => {
           try {
-            const event = await sendMessage<AiTaskEvent | null>('aiTask/event', { taskId });
-            if (!event) {
+            const eventResponse = await sendMessage<AppResult<AiTaskEvent | null>>('aiTask/event', { taskId });
+            if (!eventResponse.ok || !eventResponse.data) {
               return;
             }
+            const event = eventResponse.data;
 
             if (event.type === 'succeeded' && event.result) {
               clearInterval(pollInterval);
@@ -236,12 +238,12 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
               try {
                 const url = snapshot.page.urlAtCapture;
                 const domain = url.split('/')[2] || url;
-                const result = await sendMessage<{
+                const result = await sendMessage<AppResult<{
                   captureId: string;
                   status: string;
                   cardId?: string;
                   message: string;
-                }>('capture/save', {
+                }>>('capture/save', {
                   requestId: crypto.randomUUID(),
                   selectedText: snapshot.text,
                   context: {
@@ -256,7 +258,9 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
                   requestedAction: 'save',
                   idempotencyKey: crypto.randomUUID(),
                 });
-                console.log('[LexiFlow] Saved as card:', result.status);
+                if (result.ok) {
+                  console.log('[LexiFlow] Saved as card:', result.data.status);
+                }
               } catch (err) {
                 console.error('[LexiFlow] Save failed:', err);
               }
@@ -266,11 +270,11 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
               try {
                 const url = snapshot.page.urlAtCapture;
                 const domain = url.split('/')[2] || url;
-                const result = await sendMessage<{
+                const result = await sendMessage<AppResult<{
                   captureId: string;
                   status: string;
                   message: string;
-                }>('capture/save', {
+                }>>('capture/save', {
                   requestId: crypto.randomUUID(),
                   selectedText: snapshot.text,
                   context: {
@@ -285,7 +289,9 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
                   requestedAction: 'save-to-inbox',
                   idempotencyKey: crypto.randomUUID(),
                 });
-                console.log('[LexiFlow] Saved to inbox:', result.status);
+                if (result.ok) {
+                  console.log('[LexiFlow] Saved to inbox:', result.data.status);
+                }
               } catch (err) {
                 console.error('[LexiFlow] Save to inbox failed:', err);
               }
