@@ -57,3 +57,35 @@ export const TASK_OUTPUT_SCHEMAS = {
 export function getOutputSchema(taskType: string): z.ZodType | undefined {
   return (TASK_OUTPUT_SCHEMAS as Record<string, z.ZodType>)[taskType];
 }
+
+/**
+ * Get a JSON-serializable shape of the expected output for a task type.
+ * Used to instruct the model to produce JSON matching this structure.
+ */
+export function getSchemaJsonShape(taskType: string): Record<string, unknown> {
+  switch (taskType) {
+    case 'quick-explain':
+      return {
+        type: 'word | phrase | sentence | technical_term (optional)',
+        chineseMeaning: 'string (optional)',
+        englishMeaning: 'string (optional)',
+        fullExplanation: 'string (optional)',
+        contextMeaning: 'string (optional)',
+        examples: ['string (optional)'],
+      };
+    case 'full-analysis':
+      return {
+        type: 'word | phrase | sentence | technical_term (optional)',
+        chineseMeaning: 'string (optional)',
+        englishMeaning: 'string (optional)',
+        fullExplanation: 'string (required)',
+        contextMeaning: 'string (optional)',
+        examples: ['string (optional)'],
+        similarCards: [
+          { id: 'string', text: 'string', relation: 'string' },
+        ],
+      };
+    default:
+      return { result: 'string' };
+  }
+}

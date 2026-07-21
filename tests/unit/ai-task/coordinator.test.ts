@@ -14,9 +14,6 @@ const { generateTextMock, createModelMock, recordTaskStartMock, recordTaskTermin
 
 vi.mock('ai', () => ({
   generateText: (...args: unknown[]) => generateTextMock(...args),
-  Output: {
-    object: vi.fn((...args: unknown[]) => ({ schema: args[0]?.schema })),
-  },
 }));
 
 vi.mock('@adapters/litellm/provider-factory', () => ({
@@ -88,9 +85,9 @@ describe('AI Task Coordinator', () => {
     markInterruptedTasks();
     // Default: createModel returns a fake model
     createModelMock.mockReturnValue({ id: 'fake-model' });
-    // Default: generateText returns valid quick-explain output
+    // Default: generateText returns valid quick-explain output as JSON text
     generateTextMock.mockResolvedValue({
-      output: { chineseMeaning: '你好', englishMeaning: 'hello' },
+      text: JSON.stringify({ chineseMeaning: '你好', englishMeaning: 'hello' }),
     });
     // Default: journal mocks resolve
     recordTaskStartMock.mockResolvedValue(undefined);
@@ -184,7 +181,7 @@ describe('AI Task Coordinator', () => {
     it('transitions to failed on invalid model output', async () => {
       // generateText returns output that fails schema validation
       generateTextMock.mockResolvedValue({
-        output: { chineseMeaning: 12345 },
+        text: JSON.stringify({ chineseMeaning: 12345 }),
       });
 
       const request = createRequest();
@@ -275,7 +272,7 @@ describe('AI Task Coordinator', () => {
 
     it('suppresses stale results after cancellation', async () => {
       // generateText resolves after a delay (controlled by us)
-      let resolveGenerate: (value: { output: unknown }) => void;
+      let resolveGenerate: (value: { text: string }) => void;
       generateTextMock.mockImplementation(
         () =>
           new Promise((resolve) => {
@@ -293,7 +290,7 @@ describe('AI Task Coordinator', () => {
       await cancelTask(request.taskId);
 
       // Now resolve generateText (simulating late-arriving result)
-      resolveGenerate!({ output: { chineseMeaning: '你好' } });
+      resolveGenerate!({ text: JSON.stringify({ chineseMeaning: '你好' }) });
 
       // Wait a tick for the stale-result suppression logic to run
       await new Promise((resolve) => setTimeout(resolve, 50));

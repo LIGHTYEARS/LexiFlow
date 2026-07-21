@@ -1,7 +1,8 @@
-import { generateText, Output } from 'ai';
+import { generateText } from 'ai';
 import { createModel, type ModelProfile } from '@adapters/litellm/provider-factory';
 import { getTaskPolicy, buildPrompt } from './task-policy';
 import { validateResult } from './result-validator';
+import { getSchemaJsonShape } from './schemas';
 import { recordTaskStart, recordTaskTerminal } from './task-journal';
 import type {
   AiTaskRequest,
@@ -173,16 +174,14 @@ async function executeTask(
 
     state.progress = 30;
 
-    // Use generateText with output: Output.object() for structured output.
-    // generateObject is deprecated in favor of this pattern.
-    const { output: generatedObject } = await generateText({
+    // Use plain text generation with JSON-in-prompt approach.
+    // This is more compatible with various LiteLLM endpoints than
+    // structured output (function calling), which some endpoints don't support.
+    const jsonPrompt = `${prompt}\n\nRespond with ONLY a JSON object matching this schema. No markdown, no explanation outside the JSON:\n${JSON.stringify(getSchemaJsonShape(request.type), null, 2)}`;
+
+    const { text } = await generateText({
       model,
-      prompt,
-      output: Output.object({
-        schema,
-        name: request.type,
-        description: `Structured output for ${request.type} task`,
-      }),
+      prompt: jsonPrompt,
       abortSignal: state.abortController?.signal,
       maxOutputTokens: policy.maxOutputTokens,
       temperature: policy.temperature,
@@ -200,11 +199,25 @@ async function executeTask(
     // Emit 'validating' event so the UI can show validation progress.
     emitEvent(request.taskId, { type: 'validating', taskId: request.taskId });
 
+    // Parse the JSON response from the model
+    let parsedOutput: unknown;
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : text;
+      parsedOutput = JSON.parse(jsonStr);
+    } catch (parseError) {
+      throw createError(
+        'INVALID_INPUT',
+        `Failed to parse model output as JSON: ${parseError instanceof Error ? parseError.message : 'unknown error'}`,
+        false,
+      );
+    }
+
     const validation = validateResult(
       request.type,
       request.taskId,
       policy.promptVersion,
-      generatedObject,
+      parsedOutput,
     );
 
     if (!validation.valid || !validation.result) {

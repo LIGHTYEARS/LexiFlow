@@ -33,6 +33,7 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
   const [, setContext] = useState<ContextEvidence | null>(null);
   const [explanationContent, setExplanationContent] =
     useState<ExplanationContent | null>(null);
+  const [popoverError, setPopoverError] = useState<string | undefined>(undefined);
   const [popoverState, setPopoverState] = useState<'loading' | 'result' | 'failure'>('loading');
   const popoverStateRef = useRef(popoverState);
   popoverStateRef.current = popoverState;
@@ -73,6 +74,7 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
 
       // Send explain request to background via message
       setPopoverState('loading');
+      setPopoverError(undefined);
 
       const requestId = crypto.randomUUID();
       sendMessage<AppResult<{ accepted: boolean; taskId: string }>>('selection/explain', {
@@ -111,12 +113,16 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
               send({ type: 'EXPLAIN_SUCCEEDED' });
             } else if (event.type === 'failed' || event.type === 'cancelled') {
               clearInterval(pollInterval);
+              // Show the actual error message from the background
+              const errorMsg = 'error' in event ? (event as any).error : undefined;
+              setPopoverError(errorMsg);
               setPopoverState('failure');
               send({ type: 'EXPLAIN_FAILED' });
             }
             // For queued/validating/delta events, continue polling
-          } catch {
+          } catch (err) {
             clearInterval(pollInterval);
+            setPopoverError(err instanceof Error ? err.message : 'Request failed');
             setPopoverState('failure');
             send({ type: 'EXPLAIN_FAILED' });
           }
@@ -126,11 +132,13 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
         setTimeout(() => {
           clearInterval(pollInterval);
           if (popoverStateRef.current === 'loading') {
+            setPopoverError('Request timed out. The model service may be slow.');
             setPopoverState('failure');
             send({ type: 'EXPLAIN_FAILED' });
           }
         }, 30000);
-      }).catch(() => {
+      }).catch((err) => {
+        setPopoverError(err instanceof Error ? err.message : 'Request failed');
         setPopoverState('failure');
         send({ type: 'EXPLAIN_FAILED' });
       });
@@ -231,7 +239,7 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
             }
             selectedText={snapshot.text}
             content={explanationContent || undefined}
-            error={undefined}
+            error={popoverError}
             position={popoverPosition}
             onSave={async () => {
               // Save as card: send capture/save request to background
