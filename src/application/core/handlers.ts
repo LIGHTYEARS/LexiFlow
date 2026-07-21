@@ -17,6 +17,8 @@ import {
   removePageAccess,
   isSupportedPage,
   injectContentScriptIntoTab,
+  getAuthorizedOrigins,
+  registerContentScriptsForOrigins,
 } from '@infra/permissions/page-access-policy';
 import {
   validateModelBaseUrl,
@@ -191,6 +193,11 @@ export function registerCoreHandlers(): void {
     if (!result.granted) {
       return fail(envelope.requestId, result.error || createError('PERMISSION_DENIED', 'Permission not granted', false));
     }
+
+    // Re-register content scripts for all authorized origins (including this one)
+    // so future page loads on this origin get the content script.
+    const allOrigins = await getAuthorizedOrigins();
+    await registerContentScriptsForOrigins(allOrigins);
 
     // Inject content script into the current tab if provided
     if (tabId) {

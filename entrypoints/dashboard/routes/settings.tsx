@@ -33,6 +33,10 @@ export default function Settings(): React.JSX.Element {
   });
   const [saving, setSaving] = useState(false);
 
+  const [pageAccessUrl, setPageAccessUrl] = useState('');
+  const [pageAccessStatus, setPageAccessStatus] = useState('');
+  const [pageAccessStatusType, setPageAccessStatusType] = useState<'success' | 'error'>('success');
+
   useEffect(() => {
     void loadSettings();
   }, []);
@@ -172,6 +176,26 @@ export default function Settings(): React.JSX.Element {
     }
   }
 
+  async function handleEnableUrl(): Promise<void> {
+    if (!pageAccessUrl) return;
+    setPageAccessStatus('Enabling…');
+    try {
+      const result = await sendMessage<
+        AppResult<{ granted: boolean; originPattern: string }>
+      >('page/enable-site', { url: pageAccessUrl });
+      if (result.ok && result.data.granted) {
+        setPageAccessStatusType('success');
+        setPageAccessStatus('Enabled. Refresh pages on this origin to use LexiFlow.');
+      } else {
+        setPageAccessStatusType('error');
+        setPageAccessStatus('Failed to enable. Check extension permissions.');
+      }
+    } catch {
+      setPageAccessStatusType('error');
+      setPageAccessStatus('Failed to enable.');
+    }
+  }
+
   const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '8px',
@@ -284,6 +308,43 @@ export default function Settings(): React.JSX.Element {
             }}
           >
             {status.message}
+          </p>
+        )}
+      </div>
+
+      <div style={{ marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '16px', marginBottom: '12px', color: '#333' }}>
+          Page Access
+        </h3>
+        <p style={{ fontSize: '14px', color: '#666', margin: '0 0 12px' }}>
+          LexiFlow only works on pages you explicitly authorize. Enable the
+          current page from the extension popup, or enter a URL pattern below.
+        </p>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <input
+            type="text"
+            value={pageAccessUrl}
+            onChange={(e) => setPageAccessUrl(e.target.value)}
+            placeholder="https://en.wikipedia.org/*"
+            style={{ ...inputStyle, flex: 1 }}
+          />
+          <button
+            onClick={handleEnableUrl}
+            disabled={!pageAccessUrl}
+            style={!pageAccessUrl ? buttonDisabledStyle : buttonStyle}
+          >
+            Enable
+          </button>
+        </div>
+        {pageAccessStatus && (
+          <p
+            style={{
+              color: pageAccessStatusType === 'success' ? '#16a34a' : '#dc2626',
+              fontSize: '14px',
+              margin: '0',
+            }}
+          >
+            {pageAccessStatus}
           </p>
         )}
       </div>
