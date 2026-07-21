@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { sendMessage } from '@infra/messaging/browser-runtime';
 import type { AppResult } from '@shared/protocol/envelope';
 import type { SearchResult, SearchCommand } from '@shared/protocol/protocol-map';
@@ -11,15 +11,16 @@ export default function Cards(): React.JSX.Element {
     { type: 'idle', message: '' },
   );
 
-  async function handleSearch(e: React.FormEvent): Promise<void> {
-    e.preventDefault();
-    const trimmed = query.trim();
-    if (!trimmed) return;
+  // Load all cards on mount
+  useEffect(() => {
+    void doSearch('');
+  }, []);
 
+  async function doSearch(q: string): Promise<void> {
     setSearching(true);
     setStatus({ type: 'idle', message: '' });
     try {
-      const payload: SearchCommand = { query: trimmed };
+      const payload: SearchCommand = { query: q };
       const result = await sendMessage<AppResult<SearchResult>>(
         'knowledge/search',
         payload,
@@ -36,6 +37,11 @@ export default function Cards(): React.JSX.Element {
     } finally {
       setSearching(false);
     }
+  }
+
+  async function handleSearch(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    await doSearch(query.trim());
   }
 
   const inputStyle: React.CSSProperties = {

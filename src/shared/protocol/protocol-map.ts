@@ -41,6 +41,9 @@ export interface ProtocolMap {
   'inbox/undoBatch': (
     input: { batchId: string; expectedRevision: number },
   ) => AppResult<{ reverted: boolean }>;
+  'inbox/list': (
+    input: { status?: string; limit?: number },
+  ) => AppResult<{ items: unknown[]; total: number }>;
 
   // ── Knowledge & Search ──
   'knowledge/search': (input: SearchCommand) => AppResult<SearchResult>;

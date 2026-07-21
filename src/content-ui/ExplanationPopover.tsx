@@ -29,6 +29,7 @@ export interface ExplanationPopoverProps {
   selectedText: string;
   content?: ExplanationContent;
   error?: string;
+  saveFeedback?: string;
   position: { x: number; y: number };
   onSave: () => void;
   onSaveToInbox: () => void;
@@ -42,6 +43,7 @@ export const ExplanationPopover: React.FC<ExplanationPopoverProps> = ({
   selectedText,
   content,
   error,
+  saveFeedback,
   position,
   onSave,
   onSaveToInbox,
@@ -223,6 +225,22 @@ export const ExplanationPopover: React.FC<ExplanationPopoverProps> = ({
           >
             {error || '解释失败，请重试或保存原文到 Inbox'}
           </div>
+        </div>
+      )}
+
+      {/* Save feedback */}
+      {saveFeedback && (
+        <div
+          style={{
+            padding: '8px 12px',
+            background: '#f0fdf4',
+            borderRadius: '4px',
+            color: '#16a34a',
+            fontSize: '13px',
+            marginBottom: '12px',
+          }}
+        >
+          {saveFeedback}
         </div>
       )}
 

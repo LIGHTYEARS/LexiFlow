@@ -34,6 +34,7 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
   const [explanationContent, setExplanationContent] =
     useState<ExplanationContent | null>(null);
   const [popoverError, setPopoverError] = useState<string | undefined>(undefined);
+  const [saveFeedback, setSaveFeedback] = useState<string | undefined>(undefined);
   const [popoverState, setPopoverState] = useState<'loading' | 'result' | 'failure'>('loading');
   const popoverStateRef = useRef(popoverState);
   popoverStateRef.current = popoverState;
@@ -75,6 +76,7 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
       // Send explain request to background via message
       setPopoverState('loading');
       setPopoverError(undefined);
+      setSaveFeedback(undefined);
 
       const requestId = crypto.randomUUID();
       sendMessage<AppResult<{ accepted: boolean; taskId: string }>>('selection/explain', {
@@ -240,6 +242,7 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
             selectedText={snapshot.text}
             content={explanationContent || undefined}
             error={popoverError}
+            saveFeedback={saveFeedback}
             position={popoverPosition}
             onSave={async () => {
               // Save as card: send capture/save request to background
@@ -267,9 +270,11 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
                   idempotencyKey: crypto.randomUUID(),
                 });
                 if (result.ok) {
+                  setSaveFeedback('Saved to Inbox for review');
                   console.log('[LexiFlow] Saved as card:', result.data.status);
                 }
               } catch (err) {
+                setSaveFeedback('Save failed — try again');
                 console.error('[LexiFlow] Save failed:', err);
               }
             }}
@@ -298,9 +303,11 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
                   idempotencyKey: crypto.randomUUID(),
                 });
                 if (result.ok) {
+                  setSaveFeedback('Saved to Inbox');
                   console.log('[LexiFlow] Saved to inbox:', result.data.status);
                 }
               } catch (err) {
+                setSaveFeedback('Save failed — try again');
                 console.error('[LexiFlow] Save to inbox failed:', err);
               }
             }}

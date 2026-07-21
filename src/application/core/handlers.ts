@@ -11,6 +11,13 @@ import type { UserSettings } from '@infra/storage/settings-schema';
 import { saveCaptureTransaction } from '@infra/db/transactions';
 import type { SaveCaptureInput } from '@infra/db/transactions';
 import {
+  countCardsByStatus,
+  countInboxByStatus,
+  countDueReviews,
+  queryCards,
+  getInboxItems,
+} from '@infra/db/repository-impl';
+import {
   deriveOriginPattern,
   hasPageAccess,
   requestPageAccess,
@@ -258,15 +265,29 @@ export function registerCoreHandlers(): void {
     return ok(envelope.requestId, undefined);
   });
 
-  // ── Dashboard: get counts (placeholder — real implementation in M5-M7) ──
+  // ── Dashboard: get counts ──
   messageRegistry.register<unknown, DashboardCounts>('dashboard/counts', async (_payload: unknown, envelope) => {
-    // Placeholder counts — real queries come from repository in later milestones
-    return ok(envelope.requestId, {
-      todayDue: 0,
-      overdue: 0,
-      inbox: 0,
-      newThisWeek: 0,
-    });
+    try {
+      const [cardCounts, inboxCounts, reviewCounts] = await Promise.all([
+        countCardsByStatus(),
+        countInboxByStatus(),
+        countDueReviews(),
+      ]);
+      return ok(envelope.requestId, {
+        todayDue: reviewCounts.due,
+        overdue: reviewCounts.overdue,
+        inbox: inboxCounts.pending,
+        newThisWeek: cardCounts.active,
+      });
+    } catch {
+      // Fallback to zeros if DB queries fail
+      return ok(envelope.requestId, {
+        todayDue: 0,
+        overdue: 0,
+        inbox: 0,
+        newThisWeek: 0,
+      });
+    }
   });
 
   // ── Page summary (placeholder — real implementation in M6) ──
@@ -385,10 +406,41 @@ export function registerCoreHandlers(): void {
   messageRegistry.register<SearchCommand, SearchResult>(
     'knowledge/search',
     async (payload: unknown, envelope) => {
-      if (!payload || typeof payload !== 'object' || !('query' in payload)) {
-        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      const input = (payload || {}) as { query?: string; type?: string; status?: string; limit?: number };
+      try {
+        const { cards, total } = await queryCards({
+          search: input.query || '',
+          status: input.status || 'active',
+          limit: input.limit || 50,
+        });
+        const items = cards.map((card) => ({
+          cardId: card.id,
+          headword: card.headword.value,
+          type: card.type,
+          excerpt: card.explanations[0]?.value || '',
+          matchFields: input.query ? ['headword'] : [],
+        }));
+        return ok(envelope.requestId, { items, total });
+      } catch {
+        return ok(envelope.requestId, { items: [], total: 0 });
       }
-      return ok(envelope.requestId, { items: [], total: 0 });
+    },
+  );
+
+  // ── Inbox: list pending items ──
+  messageRegistry.register<{ status?: string; limit?: number }, { items: any[]; total: number }>(
+    'inbox/list',
+    async (payload: unknown, envelope) => {
+      const input = (payload || {}) as { status?: string; limit?: number };
+      try {
+        const result = await getInboxItems({
+          status: input.status || 'pending',
+          limit: input.limit || 50,
+        });
+        return ok(envelope.requestId, { items: result.items, total: result.items.length });
+      } catch {
+        return ok(envelope.requestId, { items: [], total: 0 });
+      }
     },
   );
 
