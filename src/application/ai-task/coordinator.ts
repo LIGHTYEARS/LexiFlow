@@ -1,4 +1,4 @@
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { createModel, type ModelProfile } from '@adapters/litellm/provider-factory';
 import { getTaskPolicy, buildPrompt } from './task-policy';
 import { validateResult } from './result-validator';
@@ -173,10 +173,16 @@ async function executeTask(
 
     state.progress = 30;
 
-    const { object } = await generateObject({
+    // Use generateText with output: Output.object() for structured output.
+    // generateObject is deprecated in favor of this pattern.
+    const { output: generatedObject } = await generateText({
       model,
-      schema,
       prompt,
+      output: Output.object({
+        schema,
+        name: request.type,
+        description: `Structured output for ${request.type} task`,
+      }),
       abortSignal: state.abortController?.signal,
       maxOutputTokens: policy.maxOutputTokens,
       temperature: policy.temperature,
@@ -198,7 +204,7 @@ async function executeTask(
       request.type,
       request.taskId,
       policy.promptVersion,
-      object,
+      generatedObject,
     );
 
     if (!validation.valid || !validation.result) {
@@ -235,6 +241,10 @@ async function executeTask(
     const appError = mapTaskError(error);
     state.state = 'failed';
     state.error = appError;
+
+    // Log the actual error for debugging (never expose to UI)
+    console.error('[LexiFlow] AI task failed:', error);
+    console.error('[LexiFlow] Mapped to:', appError.code, appError.userMessage);
 
     // Emit 'failed' event with the user-safe error message.
     emitEvent(request.taskId, {

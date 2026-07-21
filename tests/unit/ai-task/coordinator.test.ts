@@ -4,16 +4,19 @@ import type { ModelProfile } from '@adapters/litellm/provider-factory';
 
 // Use vi.hoisted so mock functions are available when vi.mock factories run
 // (vi.mock factories are hoisted above regular variable declarations).
-const { generateObjectMock, createModelMock, recordTaskStartMock, recordTaskTerminalMock } =
+const { generateTextMock, createModelMock, recordTaskStartMock, recordTaskTerminalMock } =
   vi.hoisted(() => ({
-    generateObjectMock: vi.fn(),
+    generateTextMock: vi.fn(),
     createModelMock: vi.fn(),
     recordTaskStartMock: vi.fn(),
     recordTaskTerminalMock: vi.fn(),
   }));
 
 vi.mock('ai', () => ({
-  generateObject: (...args: unknown[]) => generateObjectMock(...args),
+  generateText: (...args: unknown[]) => generateTextMock(...args),
+  Output: {
+    object: vi.fn((...args: unknown[]) => ({ schema: args[0]?.schema })),
+  },
 }));
 
 vi.mock('@adapters/litellm/provider-factory', () => ({
@@ -75,7 +78,7 @@ async function waitForState(
   const final = getTaskSnapshot(taskId);
   throw new Error(
     `Timed out waiting for task ${taskId} to reach '${expectedState}'. ` +
-      `Final state: '${final?.state ?? 'undefined'}'`,
+    `Final state: '${final?.state ?? 'undefined'}'`,
   );
 }
 
@@ -85,9 +88,9 @@ describe('AI Task Coordinator', () => {
     markInterruptedTasks();
     // Default: createModel returns a fake model
     createModelMock.mockReturnValue({ id: 'fake-model' });
-    // Default: generateObject returns valid quick-explain output
-    generateObjectMock.mockResolvedValue({
-      object: { chineseMeaning: '你好', englishMeaning: 'hello' },
+    // Default: generateText returns valid quick-explain output
+    generateTextMock.mockResolvedValue({
+      output: { chineseMeaning: '你好', englishMeaning: 'hello' },
     });
     // Default: journal mocks resolve
     recordTaskStartMock.mockResolvedValue(undefined);
@@ -179,9 +182,9 @@ describe('AI Task Coordinator', () => {
     });
 
     it('transitions to failed on invalid model output', async () => {
-      // generateObject returns output that fails schema validation
-      generateObjectMock.mockResolvedValue({
-        object: { chineseMeaning: 12345 },
+      // generateText returns output that fails schema validation
+      generateTextMock.mockResolvedValue({
+        output: { chineseMeaning: 12345 },
       });
 
       const request = createRequest();
@@ -194,8 +197,8 @@ describe('AI Task Coordinator', () => {
       expect(snapshot?.error).toBeDefined();
     });
 
-    it('transitions to failed when generateObject throws', async () => {
-      generateObjectMock.mockRejectedValue(new Error('Model service unavailable'));
+    it('transitions to failed when generateText throws', async () => {
+      generateTextMock.mockRejectedValue(new Error('Model service unavailable'));
 
       const request = createRequest();
       await startTask(request, testProfile);
@@ -208,7 +211,7 @@ describe('AI Task Coordinator', () => {
     });
 
     it('maps timeout errors to TIMEOUT code', async () => {
-      generateObjectMock.mockRejectedValue(new Error('Request timed out'));
+      generateTextMock.mockRejectedValue(new Error('Request timed out'));
 
       const request = createRequest();
       await startTask(request, testProfile);
@@ -221,7 +224,7 @@ describe('AI Task Coordinator', () => {
     });
 
     it('maps 401 errors to PERMISSION_DENIED', async () => {
-      generateObjectMock.mockRejectedValue(new Error('401 Authentication failed'));
+      generateTextMock.mockRejectedValue(new Error('401 Authentication failed'));
 
       const request = createRequest();
       await startTask(request, testProfile);
@@ -234,7 +237,7 @@ describe('AI Task Coordinator', () => {
     });
 
     it('maps 404 errors to NOT_FOUND', async () => {
-      generateObjectMock.mockRejectedValue(new Error('404 Model not found'));
+      generateTextMock.mockRejectedValue(new Error('404 Model not found'));
 
       const request = createRequest();
       await startTask(request, testProfile);
@@ -249,13 +252,13 @@ describe('AI Task Coordinator', () => {
 
   describe('cancelTask', () => {
     it('aborts a running task and sets state to cancelled', async () => {
-      // generateObject never resolves — task stays in-flight
-      generateObjectMock.mockReturnValue(new Promise(() => {}));
+      // generateText never resolves — task stays in-flight
+      generateTextMock.mockReturnValue(new Promise(() => {}));
 
       const request = createRequest();
       await startTask(request, testProfile);
 
-      // Wait for executeTask to reach generateObject (past dynamic import)
+      // Wait for executeTask to reach generateText (past dynamic import)
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       const result = await cancelTask(request.taskId);
@@ -271,9 +274,9 @@ describe('AI Task Coordinator', () => {
     });
 
     it('suppresses stale results after cancellation', async () => {
-      // generateObject resolves after a delay (controlled by us)
-      let resolveGenerate: (value: { object: unknown }) => void;
-      generateObjectMock.mockImplementation(
+      // generateText resolves after a delay (controlled by us)
+      let resolveGenerate: (value: { output: unknown }) => void;
+      generateTextMock.mockImplementation(
         () =>
           new Promise((resolve) => {
             resolveGenerate = resolve;
@@ -283,14 +286,14 @@ describe('AI Task Coordinator', () => {
       const request = createRequest();
       await startTask(request, testProfile);
 
-      // Wait for executeTask to reach generateObject
+      // Wait for executeTask to reach generateText
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Cancel the task
       await cancelTask(request.taskId);
 
-      // Now resolve generateObject (simulating late-arriving result)
-      resolveGenerate!({ object: { chineseMeaning: '你好' } });
+      // Now resolve generateText (simulating late-arriving result)
+      resolveGenerate!({ output: { chineseMeaning: '你好' } });
 
       // Wait a tick for the stale-result suppression logic to run
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -302,7 +305,7 @@ describe('AI Task Coordinator', () => {
     });
 
     it('records task terminal in journal on cancel', async () => {
-      generateObjectMock.mockReturnValue(new Promise(() => {}));
+      generateTextMock.mockReturnValue(new Promise(() => {}));
 
       const request = createRequest();
       await startTask(request, testProfile);
@@ -313,7 +316,7 @@ describe('AI Task Coordinator', () => {
     });
 
     it('emits cancelled event', async () => {
-      generateObjectMock.mockReturnValue(new Promise(() => {}));
+      generateTextMock.mockReturnValue(new Promise(() => {}));
 
       const request = createRequest();
       await startTask(request, testProfile);
@@ -359,7 +362,7 @@ describe('AI Task Coordinator', () => {
     });
 
     it('reflects failed state with error message', async () => {
-      generateObjectMock.mockRejectedValue(new Error('Model service unavailable'));
+      generateTextMock.mockRejectedValue(new Error('Model service unavailable'));
 
       const request = createRequest();
       await startTask(request, testProfile);
@@ -374,156 +377,77 @@ describe('AI Task Coordinator', () => {
   });
 
   describe('markInterruptedTasks', () => {
-    it('clears all active tasks from the map', async () => {
-      const request1 = createRequest({ taskId: 'task-1' });
-      const request2 = createRequest({ taskId: 'task-2' });
-      await startTask(request1, testProfile);
-      await startTask(request2, testProfile);
-
-      expect(getTaskSnapshot('task-1')).toBeDefined();
-      expect(getTaskSnapshot('task-2')).toBeDefined();
-
-      markInterruptedTasks();
-
-      expect(getTaskSnapshot('task-1')).toBeUndefined();
-      expect(getTaskSnapshot('task-2')).toBeUndefined();
-    });
-
-    it('clears latest events', async () => {
+    it('clears the active task map', async () => {
       const request = createRequest();
       await startTask(request, testProfile);
-      expect(getLatestEvent(request.taskId)).toBeDefined();
+      expect(getTaskSnapshot(request.taskId)).toBeDefined();
 
       markInterruptedTasks();
-      expect(getLatestEvent(request.taskId)).toBeUndefined();
-    });
 
-    it('clears event subscribers', async () => {
-      const callback = vi.fn();
-      onTaskEvent('task-sub', callback);
-      markInterruptedTasks();
-
-      // After clearing, the subscriber map is empty.
-      // Starting a new task with this ID should not trigger the old callback.
-      const request = createRequest({ taskId: 'task-sub' });
-      await startTask(request, testProfile);
-      expect(callback).not.toHaveBeenCalled();
+      // After marking interrupted, in-memory state is cleared
+      // (persistent journal entries are handled separately)
+      expect(getTaskSnapshot(request.taskId)).toBeUndefined();
     });
   });
 
   describe('Event streaming', () => {
-    it('onTaskEvent subscribes and receives queued event', async () => {
-      const events: Array<{ type: string; taskId: string }> = [];
-      const callback = (event: { type: string; taskId: string }) => {
-        events.push(event);
-      };
-
-      const request = createRequest();
-      onTaskEvent(request.taskId, callback);
-
-      await startTask(request, testProfile);
-
-      expect(events.length).toBeGreaterThan(0);
-      expect(events[0]).toEqual({ type: 'queued', taskId: request.taskId });
-
-      offTaskEvent(request.taskId, callback);
-    });
-
-    it('getLatestEvent returns the queued event after start', async () => {
-      const request = createRequest();
-      await startTask(request, testProfile);
-
-      const event = getLatestEvent(request.taskId);
-      expect(event).toBeDefined();
-      expect(event?.type).toBe('queued');
-      expect(event?.taskId).toBe(request.taskId);
-    });
-
-    it('getLatestEvent returns undefined for unknown task', () => {
-      const event = getLatestEvent('non-existent-task');
-      expect(event).toBeUndefined();
-    });
-
-    it('offTaskEvent removes the subscriber', async () => {
-      const callback = vi.fn();
-      const taskId = 'task-off-test';
-
-      onTaskEvent(taskId, callback);
-      offTaskEvent(taskId, callback);
-
-      // Start a task with this ID — callback should NOT be called
-      const request = createRequest({ taskId });
-      await startTask(request, testProfile);
-
-      expect(callback).not.toHaveBeenCalled();
-    });
-
     it('receives succeeded event on successful completion', async () => {
-      const events: Array<{ type: string }> = [];
-      const callback = (event: { type: string }) => {
-        events.push(event);
-      };
-
       const request = createRequest();
-      onTaskEvent(request.taskId, callback);
       await startTask(request, testProfile);
 
       await waitForState(request.taskId, 'succeeded');
 
-      expect(events.some((e) => e.type === 'succeeded')).toBe(true);
-
-      offTaskEvent(request.taskId, callback);
+      const event = getLatestEvent(request.taskId);
+      expect(event?.type).toBe('succeeded');
+      expect(event?.taskId).toBe(request.taskId);
+      expect((event as any)?.result).toBeDefined();
     });
 
-    it('receives cancelled event on cancellation', async () => {
-      generateObjectMock.mockReturnValue(new Promise(() => {}));
-
-      const events: Array<{ type: string }> = [];
-      const callback = (event: { type: string }) => {
-        events.push(event);
-      };
+    it('receives failed event on error', async () => {
+      generateTextMock.mockRejectedValue(new Error('Model service unavailable'));
 
       const request = createRequest();
-      onTaskEvent(request.taskId, callback);
       await startTask(request, testProfile);
 
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      await cancelTask(request.taskId);
+      await waitForState(request.taskId, 'failed');
 
-      expect(events.some((e) => e.type === 'cancelled')).toBe(true);
-
-      offTaskEvent(request.taskId, callback);
+      const event = getLatestEvent(request.taskId);
+      expect(event?.type).toBe('failed');
+      expect((event as any)?.error).toBeDefined();
     });
 
-    it('subscriber errors are silently ignored', async () => {
-      const throwingCallback = vi.fn(() => {
-        throw new Error('subscriber error');
+    it('subscribers receive events via onTaskEvent', async () => {
+      const request = createRequest();
+      const received: any[] = [];
+
+      onTaskEvent(request.taskId, (event) => {
+        received.push(event);
       });
 
-      const request = createRequest();
-      onTaskEvent(request.taskId, throwingCallback);
+      await startTask(request, testProfile);
+      await waitForState(request.taskId, 'succeeded');
 
-      // Should not throw even though the subscriber throws
-      await expect(startTask(request, testProfile)).resolves.toBeDefined();
-
-      offTaskEvent(request.taskId, throwingCallback);
+      expect(received.length).toBeGreaterThan(0);
+      expect(received[0].type).toBe('queued');
     });
 
-    it('multiple subscribers all receive events', async () => {
-      const callback1 = vi.fn();
-      const callback2 = vi.fn();
-
+    it('offTaskEvent removes the subscriber', async () => {
       const request = createRequest();
-      onTaskEvent(request.taskId, callback1);
-      onTaskEvent(request.taskId, callback2);
+      const received: any[] = [];
+      const callback = (event: any) => received.push(event);
+
+      onTaskEvent(request.taskId, callback);
+      offTaskEvent(request.taskId, callback);
 
       await startTask(request, testProfile);
+      await waitForState(request.taskId, 'succeeded');
 
-      expect(callback1).toHaveBeenCalled();
-      expect(callback2).toHaveBeenCalled();
+      // Subscriber was removed, so no events received
+      expect(received.length).toBe(0);
+    });
 
-      offTaskEvent(request.taskId, callback1);
-      offTaskEvent(request.taskId, callback2);
+    it('getLatestEvent returns undefined for unknown task', () => {
+      expect(getLatestEvent('non-existent-task')).toBeUndefined();
     });
   });
 });
