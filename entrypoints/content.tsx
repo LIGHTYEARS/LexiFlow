@@ -106,7 +106,7 @@ async function getTabId(): Promise<number> {
 /**
  * Handle keyboard commands forwarded from background.
  *
- * Commands arrive from Chrome's command API (Alt+L, Alt+I, Alt+R, Alt+Escape)
+ * Commands arrive from Chrome's command API (Alt+L, Alt+I, Alt+R, Alt+X)
  * via the background script, which forwards them as `command/{name}` messages.
  *
  * - open-explanation (Alt+L): dispatched to the SelectionController via a
@@ -115,7 +115,7 @@ async function getTabId(): Promise<number> {
  * - save-to-inbox (Alt+I): captures the current page selection and sends a
  *   `capture/save` message with `requestedAction: 'save-to-inbox'`.
  * - start-review (Alt+R): opens the dashboard review page in a new tab.
- * - close-ui (Alt+Escape): dispatched to the SelectionController via a custom
+ * - close-ui (Alt+X): dispatched to the SelectionController via a custom
  *   DOM event. The SelectionController also handles Escape directly.
  */
 function handleCommand(command: string): void {
