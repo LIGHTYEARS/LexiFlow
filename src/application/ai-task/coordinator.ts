@@ -6,6 +6,7 @@ import { recordTaskStart, recordTaskTerminal } from './task-journal';
 import type {
   AiTaskRequest,
   AiTaskState,
+  AiTaskEvent,
 } from '@shared/protocol/protocol-map';
 import { createError } from '@shared/protocol/envelope';
 import type { AppError } from '@shared/protocol/envelope';
@@ -30,6 +31,71 @@ export interface TaskState {
 }
 
 const activeTasks = new Map<string, TaskState>();
+
+// ── Event streaming infrastructure ──
+// Stores the latest event per task so polling clients can retrieve it.
+const latestEvents = new Map<string, AiTaskEvent>();
+// Per-task subscriber callbacks for in-process event streaming.
+const eventSubscribers = new Map<string, Set<(event: AiTaskEvent) => void>>();
+
+/**
+ * Emit a task event: store as latest and notify all subscribers.
+ * Subscribers are notified asynchronously (microtask) so emitters don't
+ * need to await them. Errors in subscribers are silently ignored.
+ */
+function emitEvent(taskId: string, event: AiTaskEvent): void {
+  latestEvents.set(taskId, event);
+  const subscribers = eventSubscribers.get(taskId);
+  if (subscribers) {
+    subscribers.forEach((cb) => {
+      try {
+        cb(event);
+      } catch {
+        // Never let a subscriber error break the state machine.
+      }
+    });
+  }
+}
+
+/**
+ * Subscribe to events for a specific task.
+ * The callback is invoked for every event emitted after subscription.
+ */
+export function onTaskEvent(
+  taskId: string,
+  callback: (event: AiTaskEvent) => void,
+): void {
+  let subscribers = eventSubscribers.get(taskId);
+  if (!subscribers) {
+    subscribers = new Set();
+    eventSubscribers.set(taskId, subscribers);
+  }
+  subscribers.add(callback);
+}
+
+/**
+ * Unsubscribe from events for a specific task.
+ */
+export function offTaskEvent(
+  taskId: string,
+  callback: (event: AiTaskEvent) => void,
+): void {
+  const subscribers = eventSubscribers.get(taskId);
+  if (subscribers) {
+    subscribers.delete(callback);
+    if (subscribers.size === 0) {
+      eventSubscribers.delete(taskId);
+    }
+  }
+}
+
+/**
+ * Get the latest event emitted for a task, or undefined if none.
+ * Used by the polling-style `aiTask/event` message handler.
+ */
+export function getLatestEvent(taskId: string): AiTaskEvent | undefined {
+  return latestEvents.get(taskId);
+}
 
 /**
  * Start a new AI task.
@@ -64,11 +130,19 @@ export async function startTask(
     startedAt: new Date().toISOString(),
   });
 
+  // Emit 'queued' event so subscribers know the task has started.
+  emitEvent(request.taskId, { type: 'queued', taskId: request.taskId });
+
   // Execute asynchronously (don't await — caller gets taskId immediately)
   executeTask(request, profile, state).catch((error) => {
     state.state = 'failed';
     state.error = mapTaskError(error);
     recordTaskTerminal(request.taskId, 'failed', state.error.code);
+    emitEvent(request.taskId, {
+      type: 'failed',
+      taskId: request.taskId,
+      error: state.error.userMessage,
+    });
   });
 
   return { accepted: true, taskId: request.taskId };
@@ -117,6 +191,9 @@ async function executeTask(
     state.state = 'validating';
     state.progress = 80;
 
+    // Emit 'validating' event so the UI can show validation progress.
+    emitEvent(request.taskId, { type: 'validating', taskId: request.taskId });
+
     const validation = validateResult(
       request.type,
       request.taskId,
@@ -142,6 +219,13 @@ async function executeTask(
     state.progress = 100;
     state.result = validation.result;
 
+    // Emit 'succeeded' event with the validated result.
+    emitEvent(request.taskId, {
+      type: 'succeeded',
+      taskId: request.taskId,
+      result: validation.result,
+    });
+
     await recordTaskTerminal(request.taskId, 'succeeded');
   } catch (error) {
     if (state.state === 'cancelled' || state.state === 'superseded') {
@@ -151,6 +235,13 @@ async function executeTask(
     const appError = mapTaskError(error);
     state.state = 'failed';
     state.error = appError;
+
+    // Emit 'failed' event with the user-safe error message.
+    emitEvent(request.taskId, {
+      type: 'failed',
+      taskId: request.taskId,
+      error: appError.userMessage,
+    });
 
     await recordTaskTerminal(request.taskId, 'failed', appError.code);
   }
@@ -172,6 +263,9 @@ export async function cancelTask(
 
   state.state = 'cancelled';
   state.abortController?.abort();
+
+  // Emit 'cancelled' event so subscribers are notified immediately.
+  emitEvent(taskId, { type: 'cancelled', taskId });
 
   await recordTaskTerminal(taskId, 'cancelled');
 
@@ -237,4 +331,6 @@ function mapTaskError(error: unknown): AppError {
  */
 export function markInterruptedTasks(): void {
   activeTasks.clear();
+  latestEvents.clear();
+  eventSubscribers.clear();
 }

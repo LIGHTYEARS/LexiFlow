@@ -12,7 +12,7 @@ import {
 } from './ExplanationPopover';
 import type { PageSessionRef } from '@shared/protocol/page-session';
 import { sendMessage } from '@infra/messaging/browser-runtime';
-import type { AiTaskSnapshot } from '@shared/protocol/protocol-map';
+import type { AiTaskEvent } from '@shared/protocol/protocol-map';
 
 /**
  * SelectionController — orchestrates selection detection, trigger button,
@@ -90,35 +90,35 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
           return;
         }
 
-        // Poll for task completion
+        // Poll for task completion via streaming events (every 300ms)
         const taskId = response.taskId;
         const pollInterval = setInterval(async () => {
           try {
-            const snapshot = await sendMessage<AiTaskSnapshot | null>('aiTask/getStatus', { taskId });
-            if (!snapshot) {
+            const event = await sendMessage<AiTaskEvent | null>('aiTask/event', { taskId });
+            if (!event) {
               return;
             }
 
-            if (snapshot.state === 'succeeded' && snapshot.result) {
+            if (event.type === 'succeeded' && event.result) {
               clearInterval(pollInterval);
               // The result is an AiTaskResult with .value containing the explanation
-              const result = snapshot.result as { value?: ExplanationContent };
-              const content = result.value || (snapshot.result as ExplanationContent);
+              const result = event.result as { value?: ExplanationContent };
+              const content = result.value || (event.result as ExplanationContent);
               setExplanationContent(content);
               setPopoverState('result');
               send({ type: 'EXPLAIN_SUCCEEDED' });
-            } else if (snapshot.state === 'failed' || snapshot.state === 'cancelled') {
+            } else if (event.type === 'failed' || event.type === 'cancelled') {
               clearInterval(pollInterval);
               setPopoverState('failure');
               send({ type: 'EXPLAIN_FAILED' });
             }
-            // For streaming/validating states, continue polling
+            // For queued/validating/delta events, continue polling
           } catch {
             clearInterval(pollInterval);
             setPopoverState('failure');
             send({ type: 'EXPLAIN_FAILED' });
           }
-        }, 500);
+        }, 300);
 
         // Timeout after 30 seconds
         setTimeout(() => {

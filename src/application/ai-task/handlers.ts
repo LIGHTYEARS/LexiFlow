@@ -1,11 +1,12 @@
 import { messageRegistry } from '@infra/messaging/message-registry';
 import { getSettings, getCredentialValue } from '@infra/storage/settings-gateway';
 import { canMakeModelRequest } from '@infra/permissions/model-origin-gateway';
-import { startTask, cancelTask, getTaskSnapshot } from './coordinator';
+import { startTask, cancelTask, getTaskSnapshot, getLatestEvent } from './coordinator';
 import { testConnection as testModelConnection } from '@adapters/litellm/provider-factory';
 import type {
   AiTaskRequest,
   AiTaskSnapshot,
+  AiTaskEvent,
   ConnectionTestResult,
 } from '@shared/protocol/protocol-map';
 import { ok, fail, createError } from '@shared/protocol/envelope';
@@ -106,6 +107,20 @@ export function registerAiTaskHandlers(): void {
       const input = payload as { taskId: string };
       const snapshot = getTaskSnapshot(input.taskId);
       return ok(envelope.requestId, snapshot || null);
+    },
+  );
+
+  // ── aiTask/event ──
+  // Polling-style endpoint that returns the latest event emitted for a task.
+  // Since @webext-core/messaging is request-response (no server push), the UI
+  // polls this endpoint every ~300ms to get real-time progress updates.
+  // Returns null if no event has been emitted yet (e.g. task not found).
+  messageRegistry.register<{ taskId: string }, AiTaskEvent | null>(
+    'aiTask/event',
+    async (payload, envelope) => {
+      const input = payload as { taskId: string };
+      const event = getLatestEvent(input.taskId);
+      return ok(envelope.requestId, event || null);
     },
   );
 

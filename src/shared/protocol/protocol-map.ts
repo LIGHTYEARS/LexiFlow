@@ -94,6 +94,7 @@ export interface ProtocolMap {
     input: { taskId: string; reason?: string },
   ) => AppResult<{ state: AiTaskState }>;
   'aiTask/getStatus': (input: { taskId: string }) => AppResult<AiTaskSnapshot>;
+  'aiTask/event': (input: { taskId: string }) => AppResult<AiTaskEvent | null>;
   'aiTask/testConnection': (
     input: { profileId: string },
   ) => AppResult<ConnectionTestResult>;
@@ -443,6 +444,23 @@ export type AiTaskSnapshot = {
   result?: unknown;
   error?: string;
 };
+
+/**
+ * Streaming progress event for AI task execution.
+ * Emitted by the coordinator at state transitions so the UI can show
+ * real-time progress without polling the full snapshot.
+ *
+ * Since @webext-core/messaging is request-response, this is consumed via
+ * a polling-style endpoint (`aiTask/event`) that returns the latest event
+ * for a task since the last check.
+ */
+export type AiTaskEvent =
+  | { type: 'queued'; taskId: string }
+  | { type: 'delta'; taskId: string; content: string }
+  | { type: 'validating'; taskId: string }
+  | { type: 'succeeded'; taskId: string; result: unknown }
+  | { type: 'failed'; taskId: string; error: string }
+  | { type: 'cancelled'; taskId: string };
 
 export type ConnectionTestResult = {
   ok: boolean;
