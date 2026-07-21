@@ -58,10 +58,11 @@ describe('Database Repository', () => {
       requestedAction: 'save' as const,
     };
 
-    it('saves capture to inbox', async () => {
+    it('saves capture as card when requestedAction is save', async () => {
       const result = await saveCaptureTransaction(captureInput);
-      expect(result.status).toBe('inbox');
+      expect(result.status).toBe('new-card');
       expect(result.captureId).toBeDefined();
+      expect(result.cardId).toBeDefined();
 
       // Verify source page created
       const pages = await db.sourcePages.toArray();
@@ -73,6 +74,30 @@ describe('Database Repository', () => {
       expect(captures.length).toBe(1);
       expect(captures[0].selectedText).toBe('graceful degradation');
 
+      // Verify card created (not inbox item)
+      const cards = await db.cards.toArray();
+      expect(cards.length).toBe(1);
+      expect(cards[0].headword.value).toBe('graceful degradation');
+
+      // Verify card-source link created
+      const links = await db.cardSourceLinks.toArray();
+      expect(links.length).toBe(1);
+      expect(links[0].cardId).toBe(result.cardId);
+
+      // No inbox item created
+      const inboxItems = await db.inboxItems.toArray();
+      expect(inboxItems.length).toBe(0);
+    });
+
+    it('saves capture to inbox when requestedAction is save-to-inbox', async () => {
+      const result = await saveCaptureTransaction({
+        ...captureInput,
+        requestId: 'req-inbox-1',
+        requestedAction: 'save-to-inbox' as const,
+      });
+      expect(result.status).toBe('inbox');
+      expect(result.captureId).toBeDefined();
+
       // Verify inbox item created
       const inboxItems = await db.inboxItems.toArray();
       expect(inboxItems.length).toBe(1);
@@ -80,17 +105,18 @@ describe('Database Repository', () => {
     });
 
     it('is idempotent by requestId', async () => {
-      await saveCaptureTransaction(captureInput); // First call
+      await saveCaptureTransaction(captureInput); // First call → new-card
       const result2 = await saveCaptureTransaction(captureInput);
 
       // Should return same result, not create duplicates
-      expect(result2.status).toBe('inbox');
+      expect(result2.status).toBe('appended');
+      expect(result2.cardId).toBeDefined();
 
       const captures = await db.sourceCaptures.toArray();
       expect(captures.length).toBe(1);
 
-      const inboxItems = await db.inboxItems.toArray();
-      expect(inboxItems.length).toBe(1);
+      const cards = await db.cards.toArray();
+      expect(cards.length).toBe(1);
     });
 
     it('creates unique content hash', async () => {
@@ -105,7 +131,7 @@ describe('Database Repository', () => {
 
   describe('createCardTransaction', () => {
     it('creates a card with source link', async () => {
-      // First save a capture
+      // First save a capture to inbox (so no card is created yet)
       await saveCaptureTransaction({
         requestId: 'req-card-1',
         selectedText: 'test word',
@@ -118,7 +144,7 @@ describe('Database Repository', () => {
         pageUrl: 'https://example.com',
         pageTitle: 'Test',
         domain: 'example.com',
-        requestedAction: 'save' as const,
+        requestedAction: 'save-to-inbox' as const,
       });
 
       const captureRecord = await db.sourceCaptures.toArray();
@@ -154,7 +180,7 @@ describe('Database Repository', () => {
 
   describe('appendSourceToCard', () => {
     it('appends a source link without duplication', async () => {
-      // Save two captures from same page
+      // Save two captures to inbox from same page (so no cards are created yet)
       await saveCaptureTransaction({
         requestId: 'req-append-1',
         selectedText: 'word',
@@ -167,7 +193,7 @@ describe('Database Repository', () => {
         pageUrl: 'https://example.com',
         pageTitle: 'Test',
         domain: 'example.com',
-        requestedAction: 'save' as const,
+        requestedAction: 'save-to-inbox' as const,
       });
 
       await saveCaptureTransaction({
@@ -182,7 +208,7 @@ describe('Database Repository', () => {
         pageUrl: 'https://example.com',
         pageTitle: 'Test',
         domain: 'example.com',
-        requestedAction: 'save' as const,
+        requestedAction: 'save-to-inbox' as const,
       });
 
       const captures = await db.sourceCaptures.toArray();

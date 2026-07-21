@@ -4,7 +4,7 @@ import { nowIso } from '@shared/utils/date';
 import { normalizeForComparison, normalizeForDisplay } from '@shared/utils/normalize';
 import { canonicalizeUrl } from '@shared/utils/url';
 import type { Card } from '@domain/card/card.model';
-import type { SourceCapture } from '@domain/source/source.model';
+import type { SourceCapture, CardSourceLink } from '@domain/source/source.model';
 import type { ReviewEvent, ScheduleSnapshot, ReviewRating } from '@domain/review/review.model';
 import type { ErrorType } from '@domain/error/error.model';
 import type { SaveCaptureResult } from './repository';
@@ -81,10 +81,14 @@ export async function saveCaptureTransaction(
   // Note: transaction errors propagate to caller for error handling
   return db.transaction(
     'rw',
-    db.sourcePages,
-    db.sourceCaptures,
-    db.inboxItems,
-    db.operationLogs,
+    [
+      db.sourcePages,
+      db.sourceCaptures,
+      db.inboxItems,
+      db.cards,
+      db.cardSourceLinks,
+      db.operationLogs,
+    ],
     () => {
       // 1. Upsert SourcePage
       db.sourcePages.put({
@@ -110,32 +114,83 @@ export async function saveCaptureTransaction(
       };
       db.sourceCaptures.add(capture);
 
-      // 3. Insert InboxItem (all captures go to Inbox by default for safety)
-      const inboxItem = {
-        id: crypto.randomUUID(),
-        revision: 1,
-        status: 'pending' as const,
-        sourceCaptureId: captureId,
-        suggestions: [],
-        createdAt: nowIso(),
-        updatedAt: nowIso(),
-      };
-      db.inboxItems.add(inboxItem);
+      // 3. Route based on requested action
+      if (input.requestedAction === 'save-to-inbox') {
+        // Save to Inbox for later review
+        const inboxItem = {
+          id: crypto.randomUUID(),
+          revision: 1,
+          status: 'pending' as const,
+          sourceCaptureId: captureId,
+          suggestions: [],
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+        };
+        db.inboxItems.add(inboxItem);
 
-      // 4. Record operation log
-      db.operationLogs.add({
-        id: crypto.randomUUID(),
-        requestId: input.requestId,
-        type: 'capture.save',
-        status: 'completed',
-        executedAt: nowIso(),
-      });
+        // 4. Record operation log
+        db.operationLogs.add({
+          id: crypto.randomUUID(),
+          requestId: input.requestId,
+          type: 'capture.save',
+          status: 'completed',
+          executedAt: nowIso(),
+        });
 
-      return {
-        captureId,
-        status: 'inbox' as const,
-        message: 'Saved to Inbox for review',
-      };
+        return {
+          captureId,
+          status: 'inbox' as const,
+          message: 'Saved to Inbox for review',
+        };
+      } else {
+        // Save directly as a card (requestedAction === 'save')
+        const cardId = crypto.randomUUID();
+        const card: Card = {
+          id: cardId,
+          revision: 1,
+          type: 'word',
+          status: 'active',
+          headword: {
+            value: normalizeForDisplay(input.selectedText),
+            origin: 'web_page',
+            sourceCaptureId: captureId,
+          },
+          normalizedKey: normalizeForComparison(input.selectedText),
+          explanations: [],
+          examples: [],
+          notes: [],
+          tagIds: [],
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+        };
+        db.cards.add(card);
+
+        // Link card to source capture
+        const link: CardSourceLink = {
+          id: crypto.randomUUID(),
+          cardId,
+          sourceCaptureId: captureId,
+          role: 'origin',
+          createdAt: nowIso(),
+        };
+        db.cardSourceLinks.add(link);
+
+        // 4. Record operation log
+        db.operationLogs.add({
+          id: crypto.randomUUID(),
+          requestId: input.requestId,
+          type: 'capture.save',
+          status: 'completed',
+          executedAt: nowIso(),
+        });
+
+        return {
+          captureId,
+          status: 'new-card' as const,
+          cardId,
+          message: 'Saved as card',
+        };
+      }
     },
   );
 }

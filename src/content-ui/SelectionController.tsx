@@ -270,7 +270,7 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
                   idempotencyKey: crypto.randomUUID(),
                 });
                 if (result.ok) {
-                  setSaveFeedback('Saved to Inbox for review');
+                  setSaveFeedback('Saved as card');
                   console.log('[LexiFlow] Saved as card:', result.data.status);
                 }
               } catch (err) {
