@@ -5,6 +5,7 @@ import {
   getSettings,
   updateSettings,
   saveCredential,
+  hasCredential,
 } from '@infra/storage/settings-gateway';
 import type { UserSettings } from '@infra/storage/settings-schema';
 import { saveCaptureTransaction } from '@infra/db/transactions';
@@ -84,12 +85,14 @@ export function registerCoreHandlers(): void {
       );
     }
     const settings = await getSettings();
+    // Check actual credential store (not just the ref in settings)
+    const hasCred = await hasCredential();
     // Never return credential value, only whether it's set
     return ok(envelope.requestId, {
       ...settings,
       model: {
         baseUrl: settings.model.baseUrl,
-        hasCredential: !!settings.model.credentialRef,
+        hasCredential: hasCred,
         taskModels: settings.model.taskModels,
       },
     });

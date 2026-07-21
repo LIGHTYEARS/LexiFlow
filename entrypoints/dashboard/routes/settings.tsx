@@ -52,9 +52,7 @@ export default function Settings(): React.JSX.Element {
     }
   }
 
-  async function handleSave(): Promise<void> {
-    setSaving(true);
-    setStatus({ type: 'idle', message: '' });
+  async function saveCurrentSettings(): Promise<boolean> {
     try {
       // Step 1: If a new API key was entered, save it as a credential first
       let credentialRef: string | undefined;
@@ -70,12 +68,12 @@ export default function Settings(): React.JSX.Element {
             type: 'error',
             message: credResult.ok ? 'Failed to save API key.' : credResult.error.userMessage,
           });
-          return;
+          return false;
         }
         credentialRef = credResult.data.credentialRef;
       }
 
-      // Step 2: Request model origin permission (requires user gesture — this is one)
+      // Step 2: Request model origin permission (requires user gesture)
       if (baseUrl) {
         const permResult = await sendMessage<
           AppResult<{ granted: boolean; originPattern?: string }>
@@ -87,15 +85,18 @@ export default function Settings(): React.JSX.Element {
               ? 'Permission for model origin was not granted.'
               : permResult.error.userMessage,
           });
-          return;
+          return false;
         }
       }
 
       // Step 3: Save settings with the credential reference (not the raw key)
+      // IMPORTANT: Only include credentialRef if a new key was entered.
+      // Otherwise, omit it so the deep merge in updateSettings preserves
+      // the existing credentialRef (don't wipe it with undefined).
       const patch: Partial<UserSettings> = {
         model: {
           baseUrl,
-          credentialRef: credentialRef || undefined,
+          ...(credentialRef ? { credentialRef } : {}),
           taskModels: { [DEFAULT_PROFILE_ID]: modelId },
         },
       };
@@ -105,40 +106,45 @@ export default function Settings(): React.JSX.Element {
         command,
       );
       if (result.ok) {
-        setStatus({ type: 'success', message: 'Settings saved successfully.' });
         if (apiKey) {
           setHasCredential(true);
           setApiKey('');
         }
+        return true;
       } else {
         setStatus({ type: 'error', message: result.error.userMessage });
+        return false;
       }
     } catch {
       setStatus({ type: 'error', message: 'Failed to save settings.' });
-    } finally {
-      setSaving(false);
+      return false;
     }
+  }
+
+  async function handleSave(): Promise<void> {
+    setSaving(true);
+    setStatus({ type: 'idle', message: '' });
+    const saved = await saveCurrentSettings();
+    if (saved) {
+      setStatus({ type: 'success', message: 'Settings saved successfully.' });
+    }
+    setSaving(false);
   }
 
   async function handleTestConnection(): Promise<void> {
     setConnectionStatus({ type: 'testing', message: 'Testing connection…' });
-    try {
-      // Request model origin permission first (user gesture)
-      if (baseUrl) {
-        const permResult = await sendMessage<
-          AppResult<{ granted: boolean; originPattern?: string }>
-        >('settings/requestModelAccess', { baseUrl });
-        if (!permResult.ok || !permResult.data.granted) {
-          setConnectionStatus({
-            type: 'error',
-            message: permResult.ok
-              ? 'Permission for model origin was not granted.'
-              : permResult.error.userMessage,
-          });
-          return;
-        }
-      }
 
+    // Save current form values first so the test uses them (not stale defaults)
+    const saved = await saveCurrentSettings();
+    if (!saved) {
+      setConnectionStatus({
+        type: 'error',
+        message: status.message || 'Failed to save settings before testing.',
+      });
+      return;
+    }
+
+    try {
       const result = await sendMessage<AppResult<ConnectionTestResult>>(
         'aiTask/testConnection',
         { profileId: DEFAULT_PROFILE_ID },

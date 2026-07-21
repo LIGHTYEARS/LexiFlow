@@ -88,14 +88,22 @@ export async function updateSettings(
 ): Promise<{ success: boolean; settings?: UserSettings; error?: AppError }> {
   const current = await getSettings();
 
-  // Deep merge for nested objects
+  // Deep merge for nested objects — skip undefined values to avoid wiping existing data
+  const cleanPatch = Object.fromEntries(
+    Object.entries(patch).filter(([_, v]) => v !== undefined)
+  ) as Partial<UserSettings>;
   const merged: UserSettings = {
     ...current,
-    ...patch,
-    selection: { ...current.selection, ...patch.selection },
-    automation: { ...current.automation, ...patch.automation },
-    review: { ...current.review, ...patch.review },
-    model: { ...current.model, ...patch.model },
+    ...cleanPatch,
+    selection: { ...current.selection, ...cleanPatch.selection },
+    automation: { ...current.automation, ...cleanPatch.automation },
+    review: { ...current.review, ...cleanPatch.review },
+    model: {
+      ...current.model,
+      ...Object.fromEntries(
+        Object.entries(cleanPatch.model || {}).filter(([_, v]) => v !== undefined)
+      ),
+    },
   };
 
   return { ...(await saveSettings(merged)), settings: merged };
