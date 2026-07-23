@@ -125,9 +125,18 @@ export function registerCoreHandlers(): void {
       if (!granted) {
         return fail(envelope.requestId, createError('PERMISSION_DENIED', 'Site not authorized', false));
       }
-      await registerContentScriptsForOrigins(await getAuthorizedOrigins());
+      const reg = await registerContentScriptsForOrigins(await getAuthorizedOrigins());
+      let injectErr: string | undefined;
       if (tabId) {
-        await injectContentScriptIntoTab(tabId);
+        const inj = await injectContentScriptIntoTab(tabId);
+        injectErr = inj.error;
+      }
+      // Surface any registration/injection error so the popup can display it.
+      if (reg.error || injectErr) {
+        return fail(
+          envelope.requestId,
+          createError('INTERNAL', `Injection failed: ${reg.error ?? ''} ${injectErr ?? ''}`.trim(), true),
+        );
       }
       return ok(envelope.requestId, { registered: true, originPattern });
     },

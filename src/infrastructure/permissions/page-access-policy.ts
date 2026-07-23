@@ -95,16 +95,16 @@ export async function getAuthorizedOrigins(): Promise<string[]> {
  */
 export async function registerContentScriptsForOrigins(
   origins: string[],
-): Promise<void> {
+): Promise<{ registered: boolean; error?: string }> {
   const httpOrigins = origins.filter(
     (o) => o.startsWith('http://') || o.startsWith('https://'),
   );
 
-  if (httpOrigins.length === 0) return;
+  if (httpOrigins.length === 0) return { registered: false };
 
   try {
     // First unregister any existing registration to avoid conflicts
-    await chrome.scripting.unregisterContentScripts({ ids: ['lexiflow-content'] }).catch((error) => { console.error('[LexiFlow] Failed to unregister content scripts:', error); });
+    await chrome.scripting.unregisterContentScripts({ ids: ['lexiflow-content'] }).catch(() => {});
 
     await chrome.scripting.registerContentScripts([
       {
@@ -115,9 +115,11 @@ export async function registerContentScriptsForOrigins(
         allFrames: false,
       },
     ]);
-    // Note: permission errors are non-fatal; logged intentionally for diagnostics
+    return { registered: true };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     console.error('[LexiFlow] Failed to register content scripts:', error);
+    return { registered: false, error: message };
   }
 }
 
@@ -137,15 +139,17 @@ export async function unregisterContentScripts(): Promise<void> {
  * Inject content script into the current tab immediately after authorization.
  * So the user doesn't need to refresh the page.
  */
-export async function injectContentScriptIntoTab(tabId: number): Promise<void> {
+export async function injectContentScriptIntoTab(tabId: number): Promise<{ injected: boolean; error?: string }> {
   try {
     await chrome.scripting.executeScript({
       target: { tabId, frameIds: [0] },
       files: ['content-scripts/content.js'],
     });
-    // Note: permission errors are non-fatal; logged intentionally for diagnostics
+    return { injected: true };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     console.error('[LexiFlow] Failed to inject content script:', error);
+    return { injected: false, error: message };
   }
 }
 
