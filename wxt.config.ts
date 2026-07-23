@@ -30,7 +30,7 @@ export default defineConfig({
         description: 'Start today review',
       },
       'close-ui': {
-        suggested_key: { default: 'Alt+Escape' },
+        suggested_key: { default: 'Alt+Shift+X' },
         description: 'Close LexiFlow page UI',
       },
     },
