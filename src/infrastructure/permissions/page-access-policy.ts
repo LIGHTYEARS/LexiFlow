@@ -110,7 +110,7 @@ export async function registerContentScriptsForOrigins(
       {
         id: 'lexiflow-content',
         matches: httpOrigins,
-        js: ['/content.js'],
+        js: ['content-scripts/content.js'],
         runAt: 'document_idle',
         allFrames: false,
       },
@@ -141,7 +141,7 @@ export async function injectContentScriptIntoTab(tabId: number): Promise<void> {
   try {
     await chrome.scripting.executeScript({
       target: { tabId, frameIds: [0] },
-      files: ['/content.js'],
+      files: ['content-scripts/content.js'],
     });
     // Note: permission errors are non-fatal; logged intentionally for diagnostics
   } catch (error) {
