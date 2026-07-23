@@ -1,4 +1,4 @@
-import { generateObject, streamText, APICallError } from 'ai';
+import { generateObject, generateText, streamText, APICallError } from 'ai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { z } from 'zod';
 import { createError } from '@shared/protocol/envelope';
@@ -174,20 +174,29 @@ export async function streamTaskText(params: {
 /**
  * Connection test (PRD §14.1). Distinguishes unreachable / auth / timeout /
  * model-unavailable without exposing the credential in the message.
+ *
+ * Uses a configured model (explicit arg → first configured task model → the
+ * built-in default) and a lenient plain-text generation, since not every
+ * LiteLLM-served model supports structured output — a connectivity test must
+ * not fail merely because JSON mode is unsupported.
  */
-export async function testConnection(): Promise<ConnectionTestResult> {
+export async function testConnection(modelId?: string): Promise<ConnectionTestResult> {
   const started = performance.now();
   try {
-    const config = await loadProviderConfig();
+    const settings = await getSettings();
+    const firstConfigured = Object.values(settings.model.taskModels ?? {}).find((m) => !!m);
+    const config = await loadProviderConfig(modelId || firstConfigured);
     const model = makeModel(config);
-    await generateObject({
+    await generateText({
       model,
-      schema: z.object({ ok: z.boolean() }),
-      system: 'Reply with {"ok": true}. This is a connectivity test.',
-      prompt: 'ping',
-      abortSignal: AbortSignal.timeout(10000),
+      prompt: 'Reply with the single word: ok',
+      abortSignal: AbortSignal.timeout(15000),
     });
-    return { ok: true, message: 'Connection successful', latencyMs: Math.round(performance.now() - started) };
+    return {
+      ok: true,
+      message: `Connection successful (model: ${config.modelId})`,
+      latencyMs: Math.round(performance.now() - started),
+    };
   } catch (error) {
     const appError = classifyModelError(error);
     return {
@@ -208,7 +217,7 @@ function connectionMessageFor(code: string): string {
     case 'TIMEOUT':
       return 'The connection timed out.';
     case 'MODEL_UNAVAILABLE':
-      return 'The endpoint is reachable but the model is unavailable.';
+      return 'The endpoint is reachable but the model is unavailable — check that the model name matches one your LiteLLM serves (set it under Task models in Settings).';
     case 'INVALID_INPUT':
       return 'No endpoint configured, or the response was not understood.';
     default:
