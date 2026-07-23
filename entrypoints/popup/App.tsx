@@ -67,7 +67,20 @@ export default function App(): React.JSX.Element {
         setSiteMsg('Permission was declined.');
         return;
       }
-      await callMessage('page/register-site', { url: tab.url, tabId: tab.id });
+      // Register for future loads via the background (persists across the
+      // session); tolerate a sleeping worker.
+      try {
+        await callMessage('page/register-site', { url: tab.url });
+      } catch {
+        /* background may be asleep; the direct injection below is what matters now */
+      }
+      // Inject immediately from the popup itself — the popup has the scripting
+      // permission and just acquired the host permission in this gesture, so we
+      // don't depend on a live background service worker.
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, frameIds: [0] },
+        files: ['content-scripts/content.js'],
+      });
       setSiteEnabled(true);
       setSiteMsg('Enabled — select text on the page to see the trigger.');
     } catch (e) {
