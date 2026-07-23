@@ -207,7 +207,10 @@ export async function getInboxItemsWithSource(
   if (query.status) {
     collection = collection.filter((item) => item.status === query.status);
   } else {
-    collection = collection.filter((item) => item.status !== 'discarded');
+    // By default, only show pending/processing items (not resolved or discarded)
+    collection = collection.filter(
+      (item) => item.status === 'pending' || item.status === 'processing',
+    );
   }
 
   const items = await collection.sortBy('createdAt');
