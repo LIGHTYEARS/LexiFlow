@@ -124,7 +124,7 @@ export async function runStructuredTask<T extends AiResultTaskType>(
 ): Promise<z.infer<(typeof AI_RESULT_SCHEMAS)[T]>> {
   const config = await loadProviderConfig(params.modelId);
   const model = makeModel(config);
-  const schema = AI_RESULT_SCHEMAS[params.taskType];
+  const schema = AI_RESULT_SCHEMAS[params.taskType] as z.ZodType;
 
   // Combine an external abort signal with the timeout.
   const timeoutSignal = AbortSignal.timeout(params.timeoutMs);
@@ -132,15 +132,105 @@ export async function runStructuredTask<T extends AiResultTaskType>(
     ? anySignal([params.signal, timeoutSignal])
     : timeoutSignal;
 
-  const { object } = await generateObject({
-    model,
-    schema: schema as z.ZodType,
-    system: params.system,
-    prompt: params.userPrompt,
-    abortSignal: signal,
-  });
+  // Primary path: native structured output (works on providers that support
+  // json_schema / tool mode).
+  try {
+    const { object } = await generateObject({
+      model,
+      schema,
+      system: params.system,
+      prompt: params.userPrompt,
+      abortSignal: signal,
+    });
+    return object as z.infer<(typeof AI_RESULT_SCHEMAS)[T]>;
+  } catch (error) {
+    // Abort/network/auth errors are real failures — don't paper over them.
+    if (error instanceof DOMException && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
+      throw error;
+    }
+    if (APICallError.isInstance(error)) {
+      const status = error.statusCode;
+      // 4xx/5xx transport errors are genuine; only fall back for schema/parse issues.
+      if (status !== undefined && status !== 400 && status !== 422) throw error;
+    }
 
-  return object as z.infer<(typeof AI_RESULT_SCHEMAS)[T]>;
+    // Fallback path: many LiteLLM-proxied models don't honor structured output.
+    // Ask for JSON in the prompt, then extract + leniently validate it.
+    const jsonInstruction =
+      '\n\nRespond with ONLY a single JSON object matching this shape, no prose, ' +
+      'no markdown fences:\n' +
+      describeSchemaShape(params.taskType);
+    const { text } = await generateText({
+      model,
+      system: params.system + jsonInstruction,
+      prompt: params.userPrompt,
+      abortSignal: signal,
+    });
+    const parsed = extractJson(text);
+    if (parsed === undefined) {
+      throw createError('INVALID_INPUT', 'The model output could not be validated', true);
+    }
+    // Lenient parse: coerce/strip unknown fields; only fail if required core is absent.
+    const result = schema.safeParse(parsed);
+    if (result.success) {
+      return result.data as z.infer<(typeof AI_RESULT_SCHEMAS)[T]>;
+    }
+    const salvaged = salvageResult(params.taskType, parsed);
+    if (salvaged) return salvaged as z.infer<(typeof AI_RESULT_SCHEMAS)[T]>;
+    throw createError('INVALID_INPUT', 'The model output could not be validated', true);
+  }
+}
+
+/** A compact human/JSON description of the expected fields for the fallback prompt. */
+function describeSchemaShape(taskType: AiResultTaskType): string {
+  switch (taskType) {
+    case 'quick-explain':
+      return '{"type":"word|phrase|sentence|technical_term","chineseMeaning":"...","englishMeaning":"...","contextMeaning":"(optional)","examples":["(optional)"]}';
+    case 'full-analysis':
+      return '{"type":"word|phrase|sentence|technical_term","headword":"...","chineseMeaning":"...","englishMeaning":"...","examples":["..."]}';
+    case 'practice-generate':
+      return '{"items":[{"prompt":"...","acceptableAnswers":["..."],"explanation":"..."}]}';
+  }
+}
+
+/** Extract a JSON object from raw model text (handles ```json fences and surrounding prose). */
+function extractJson(text: string): unknown {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced ? fenced[1] : text;
+  // Grab the outermost {...} span.
+  const start = candidate.indexOf('{');
+  const end = candidate.lastIndexOf('}');
+  if (start === -1 || end === -1 || end < start) return undefined;
+  try {
+    return JSON.parse(candidate.slice(start, end + 1));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Best-effort salvage: fill the required core fields when the model omitted/renamed some. */
+function salvageResult(taskType: AiResultTaskType, raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const o = raw as Record<string, unknown>;
+  const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v : undefined);
+  if (taskType === 'quick-explain' || taskType === 'full-analysis') {
+    const zh = str(o.chineseMeaning) ?? str(o.chinese) ?? str(o.zh) ?? str(o.meaning);
+    const en = str(o.englishMeaning) ?? str(o.english) ?? str(o.en) ?? str(o.definition);
+    if (!zh && !en) return undefined;
+    const type = ['word', 'phrase', 'sentence', 'technical_term'].includes(String(o.type))
+      ? o.type
+      : 'word';
+    const base: Record<string, unknown> = {
+      type,
+      chineseMeaning: zh ?? en ?? '',
+      englishMeaning: en ?? zh ?? '',
+      contextMeaning: str(o.contextMeaning),
+      examples: Array.isArray(o.examples) ? o.examples.filter((e) => typeof e === 'string') : undefined,
+    };
+    if (taskType === 'full-analysis') base.headword = str(o.headword) ?? '';
+    return base;
+  }
+  return undefined;
 }
 
 /**
