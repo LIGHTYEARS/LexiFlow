@@ -7,7 +7,7 @@ export default defineConfig({
     description: 'Personal English reading & expression learning extension',
     version: '0.1.0',
     manifest_version: 3,
-    permissions: ['storage', 'sidePanel', 'scripting', 'commands'],
+    permissions: ['storage', 'sidePanel', 'scripting', 'commands', 'activeTab'],
     optional_host_permissions: ['http://*/*', 'https://*/*'],
     action: {
       default_title: 'LexiFlow',

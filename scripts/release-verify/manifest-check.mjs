@@ -46,7 +46,7 @@ export function checkManifest() {
   }
 
   // Permissions should only include what we need
-  const allowedPermissions = ['storage', 'sidePanel', 'scripting', 'commands'];
+  const allowedPermissions = ['storage', 'sidePanel', 'scripting', 'commands', 'activeTab'];
   const extraPermissions = (manifest.permissions || []).filter(
     (p) => !allowedPermissions.includes(p),
   );
