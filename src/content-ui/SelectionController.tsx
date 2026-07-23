@@ -299,7 +299,7 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
   return (
     <>
       {/* Trigger button — shown when armed */}
-      {state.matches('armed') && snapshot && sitePolicy?.enabled && (
+      {state.matches('armed') && snapshot && sitePolicy?.enabled !== false && (
         <SelectionTrigger
           position={triggerPosition}
           onTrigger={handleTrigger}
