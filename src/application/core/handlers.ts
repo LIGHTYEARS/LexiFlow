@@ -18,7 +18,7 @@ import {
   injectContentScriptIntoTab,
 } from '@infra/permissions/page-access-policy';
 import { aiTaskCoordinator } from '@app/ai/task-coordinator';
-import { testConnection } from '@adapters/llm-provider';
+import { testConnection, listAvailableModels } from '@adapters/llm-provider';
 import { saveCaptureTransaction, createCardTransaction, appendSourceToCard } from '@infra/db/transactions';
 import { db } from '@infra/db/database';
 import {
@@ -454,6 +454,19 @@ export function registerCoreHandlers(): void {
       const appError = error && typeof error === 'object' && 'code' in error
         ? (error as AppError)
         : createError('INTERNAL', 'Connection test failed', true);
+      return fail(envelope.requestId, appError);
+    }
+  });
+
+  // ── AI Task: list available models ──
+  messageRegistry.register<unknown, { models: string[] }>('aiTask/listModels', async (_payload: unknown, envelope) => {
+    try {
+      const models = await listAvailableModels();
+      return ok(envelope.requestId, { models });
+    } catch (error) {
+      const appError = error && typeof error === 'object' && 'code' in error
+        ? (error as AppError)
+        : createError('INTERNAL', 'Failed to list models', true);
       return fail(envelope.requestId, appError);
     }
   });

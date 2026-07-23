@@ -33,8 +33,43 @@ export async function resolveModelProfile(): Promise<ModelProfile> {
   if (!apiKey) {
     throw createError('INVALID_INPUT', 'API key not found or could not be decrypted.', false);
   }
-  const modelId = settings.model.taskModels['quick-explain'] || settings.model.taskModels['default'] || 'gpt-4o-mini';
+  const modelId = settings.model.taskModels['quick-explain'] || settings.model.taskModels['default'];
+  if (!modelId) {
+    throw createError('INVALID_INPUT', 'No model name configured. Set it in Settings.', false);
+  }
   return { baseUrl: settings.model.baseUrl, apiKey, modelId };
+}
+
+/**
+ * Fetch the list of available models from the LiteLLM /v1/models endpoint.
+ */
+export async function listAvailableModels(): Promise<string[]> {
+  const settings = await getSettings();
+  if (!settings.model.baseUrl) {
+    throw createError('INVALID_INPUT', 'LiteLLM base URL not configured.', false);
+  }
+  if (!settings.model.credentialRef) {
+    throw createError('INVALID_INPUT', 'No API key configured.', false);
+  }
+  const apiKey = await getCredentialValue(settings.model.credentialRef);
+  if (!apiKey) {
+    throw createError('INVALID_INPUT', 'API key not found.', false);
+  }
+
+  const url = settings.model.baseUrl.replace(/\/$/, '') + '/models';
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+
+  if (!response.ok) {
+    throw createError('MODEL_UNAVAILABLE', `Failed to fetch models: ${response.status} ${response.statusText}`, true);
+  }
+
+  const data = await response.json();
+  const models: string[] = (data?.data || [])
+    .map((m: { id?: string }) => m?.id)
+    .filter(Boolean);
+  return models;
 }
 
 /**

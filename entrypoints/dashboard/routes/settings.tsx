@@ -64,6 +64,9 @@ export default function Settings(): React.JSX.Element {
   const [status, setStatus] = useState<string>('');
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
+  const [modelName, setModelName] = useState('');
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [fetchingModels, setFetchingModels] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -81,6 +84,7 @@ export default function Settings(): React.JSX.Element {
       if (res?.ok) {
         setSettings(res.data);
         setBaseUrl(res.data.model.baseUrl || '');
+        setModelName(res.data.model.taskModels?.['default'] || '');
       }
     } catch (e) {
       console.error('Failed to load settings:', e);
@@ -199,6 +203,29 @@ export default function Settings(): React.JSX.Element {
       setTestResult('✗ Error: ' + String(e));
     } finally {
       setTesting(false);
+    }
+  }, []);
+
+  const fetchModels = useCallback(async () => {
+    setFetchingModels(true);
+    setAvailableModels([]);
+    try {
+      const res = await chrome.runtime.sendMessage({
+        protocolVersion: 1,
+        type: 'aiTask/listModels',
+        requestId: crypto.randomUUID(),
+        occurredAt: new Date().toISOString(),
+        payload: {},
+      });
+      if (res?.ok) {
+        setAvailableModels(res.data.models || []);
+      } else {
+        setTestResult('✗ Failed to fetch models: ' + (res?.error?.userMessage || 'unknown'));
+      }
+    } catch (e) {
+      setTestResult('✗ Error: ' + String(e));
+    } finally {
+      setFetchingModels(false);
     }
   }, []);
 
@@ -424,13 +451,38 @@ export default function Settings(): React.JSX.Element {
             placeholder={settings.model.hasCredential ? '•••••••• (already set)' : 'Enter API key'}
           />
         </div>
+        <div style={{ marginBottom: '12px' }}>
+          <label style={LABEL_STYLE}>Model Name</label>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="text"
+              style={INPUT_STYLE}
+              value={modelName}
+              onChange={(e) => setModelName(e.target.value)}
+              placeholder="e.g., gpt-4o-mini, claude-3-5-sonnet, etc."
+              list="available-models"
+            />
+            <button
+              style={SECONDARY_BUTTON_STYLE}
+              onClick={fetchModels}
+              disabled={fetchingModels || !baseUrl}
+            >
+              {fetchingModels ? 'Fetching...' : 'Fetch Models'}
+            </button>
+          </div>
+          <datalist id="available-models">
+            {availableModels.map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+        </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button
             style={BUTTON_STYLE}
-            onClick={() => saveSetting({ model: { baseUrl } })}
+            onClick={() => saveSetting({ model: { baseUrl, taskModels: { default: modelName } } })}
             disabled={saving}
           >
-            Save URL
+            Save Settings
           </button>
           <button
             style={SECONDARY_BUTTON_STYLE}
