@@ -169,6 +169,7 @@ export async function createCardTransaction(
     db.cards,
     db.cardSourceLinks,
     db.operationLogs,
+    db.scheduleSnapshots,
     () => {
       const card: Card = {
         id: cardId,
@@ -204,6 +205,27 @@ export async function createCardTransaction(
         sourceCaptureId: input.sourceCaptureId,
         role: 'origin',
         createdAt: now,
+      });
+
+      // Create initial FSRS schedule snapshot for the new card
+      db.scheduleSnapshots.put({
+        cardId,
+        lastSequence: 0,
+        state: {
+          schedulerVersion: 'fsrs-6',
+          state: 'new',
+          dueAt: now,
+          stability: 0,
+          difficulty: 0,
+          elapsedDays: 0,
+          scheduledDays: 0,
+          reps: 0,
+          lapses: 0,
+        },
+        dueAt: now,
+        stateHash: 'initial',
+        schedulerVersion: 'fsrs-6',
+        parameterSetId: 'fsrs-6',
       });
 
       // Record operation

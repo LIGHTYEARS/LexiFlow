@@ -31,9 +31,31 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
   const [explanationContent, setExplanationContent] =
     useState<ExplanationContent | null>(null);
   const [, setPopoverState] = useState<'loading' | 'result' | 'failure'>('loading');
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [sitePolicy, setSitePolicy] = useState<{ enabled: boolean; autoExplain: boolean } | null>(null);
+  const currentTaskIdRef = useRef<string | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const observerRef = useRef<SelectionObserver | null>(null);
   const [state, send] = useMachine(selectionMachine);
+
+  // Fetch site policy (enabled + autoExplain) on mount
+  useEffect(() => {
+    chrome.runtime.sendMessage({
+      protocolVersion: 1,
+      type: 'settings/site-policy',
+      requestId: crypto.randomUUID(),
+      occurredAt: new Date().toISOString(),
+      payload: { origin: window.location.origin },
+    }).then((res) => {
+      if (res?.ok) {
+        setSitePolicy({ enabled: res.data.enabled, autoExplain: res.data.autoExplain });
+      }
+    }).catch(() => {
+      // Default to enabled if policy fetch fails
+      setSitePolicy({ enabled: true, autoExplain: false });
+    });
+  }, []);
 
   // Initialize selection observer
   useEffect(() => {
@@ -44,6 +66,11 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
       if (newSnapshot) {
         setSnapshot(newSnapshot);
         send({ type: 'VALID_SELECTION', snapshot: newSnapshot });
+        // Auto-explain if enabled and site is enabled
+        if (sitePolicy?.enabled && sitePolicy?.autoExplain) {
+          send({ type: 'AUTO_TRIGGER' });
+          setTimeout(() => handleTrigger(newSnapshot), 50);
+        }
       } else {
         send({ type: 'SELECTION_COLLAPSED' });
       }
@@ -57,33 +84,106 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
   }, [pageSession, hostElement, send]);
 
   // Handle explicit trigger (click or keyboard shortcut)
-  const handleTrigger = useCallback(() => {
+  const handleTrigger = useCallback((snap?: SelectionSnapshot) => {
+    const activeSnapshot = snap || snapshot;
+    if (!activeSnapshot) return;
     send({ type: 'EXPLICIT_TRIGGER' });
 
     // Extract context locally (fast, no network)
-    if (snapshot) {
-      const extractedContext = extractContext(snapshot);
-      setContext(extractedContext);
-      send({ type: 'CONTEXT_READY', context: extractedContext });
+    const extractedContext = extractContext(activeSnapshot);
+    setContext(extractedContext);
+    send({ type: 'CONTEXT_READY', context: extractedContext });
 
-      // M4: Send explain request to background via message
-      // For M3, simulate with a delay to show loading state
-      setPopoverState('loading');
+    setPopoverState('loading');
+    setErrorMessage('');
+    setExplanationContent(null);
 
-      // Placeholder: actual model request in M4
-      setTimeout(() => {
-        setExplanationContent({
-          type: 'word',
-          chineseMeaning: '（模型解释将在 M4 实现）',
-          englishMeaning: '(Model explanation will be implemented in M4)',
-          contextMeaning: '文中含义：此处指...',
-          examples: ['Example sentence here.'],
-        });
-        setPopoverState('result');
-        send({ type: 'EXPLAIN_SUCCEEDED' });
-      }, 800);
-    }
+    // Send explain request to background
+    const requestId = crypto.randomUUID();
+    chrome.runtime.sendMessage({
+      protocolVersion: 1,
+      type: 'selection/explain',
+      requestId,
+      occurredAt: new Date().toISOString(),
+      payload: {
+        requestId,
+        selection: activeSnapshot.text,
+        context: extractedContext,
+        source: { origin: 'web_page', urlWithoutFragment: window.location.href.split('#')[0] },
+        task: 'quick-explain',
+      },
+    }).then((res) => {
+      if (!res?.ok) {
+        setPopoverState('failure');
+        setErrorMessage(res?.error?.userMessage || 'Failed to start explanation');
+        send({ type: 'EXPLAIN_FAILED' });
+        return;
+      }
+      const taskId: string = res.data.taskId;
+      currentTaskIdRef.current = taskId;
+      // Poll for task completion
+      pollTaskStatus(taskId);
+    }).catch((err) => {
+      setPopoverState('failure');
+      setErrorMessage('Communication error: ' + String(err));
+      send({ type: 'EXPLAIN_FAILED' });
+    });
   }, [snapshot, send]);
+
+  // Poll AI task status until done
+  const pollTaskStatus = useCallback((taskId: string) => {
+    const poll = () => {
+      chrome.runtime.sendMessage({
+        protocolVersion: 1,
+        type: 'aiTask/getStatus',
+        requestId: crypto.randomUUID(),
+        occurredAt: new Date().toISOString(),
+        payload: { taskId },
+      }).then((res) => {
+        if (!res?.ok) {
+          setPopoverState('failure');
+          setErrorMessage(res?.error?.userMessage || 'Failed to get task status');
+          send({ type: 'EXPLAIN_FAILED' });
+          return;
+        }
+        const status = res.data;
+        if (status.state === 'succeeded' && status.result) {
+          const r = status.result as {
+            type?: string;
+            chineseMeaning?: string;
+            englishMeaning?: string;
+            contextMeaning?: string;
+            examples?: string[];
+          };
+          setExplanationContent({
+            type: r.type as ExplanationContent['type'],
+            chineseMeaning: r.chineseMeaning,
+            englishMeaning: r.englishMeaning,
+            contextMeaning: r.contextMeaning,
+            examples: r.examples,
+          });
+          setPopoverState('result');
+          send({ type: 'EXPLAIN_SUCCEEDED' });
+        } else if (status.state === 'failed') {
+          setPopoverState('failure');
+          setErrorMessage(status.error || 'Explanation failed');
+          send({ type: 'EXPLAIN_FAILED' });
+        } else if (status.state === 'cancelled') {
+          setPopoverState('failure');
+          setErrorMessage('Cancelled');
+          send({ type: 'EXPLAIN_FAILED' });
+        } else {
+          // Still running — poll again
+          pollTimerRef.current = setTimeout(poll, 500);
+        }
+      }).catch((err) => {
+        setPopoverState('failure');
+        setErrorMessage('Communication error: ' + String(err));
+        send({ type: 'EXPLAIN_FAILED' });
+      });
+    };
+    poll();
+  }, [send]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -137,6 +237,15 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
     return () => document.removeEventListener('scroll', handleScroll, true);
   }, [state, send]);
 
+  // Cleanup poll timer on unmount
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current);
+      }
+    };
+  }, []);
+
   // Calculate trigger button position
   const triggerPosition = snapshot
     ? {
@@ -153,10 +262,44 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
       }
     : { x: 0, y: 0 };
 
+  // Send capture to background (save or save-to-inbox)
+  const handleSave = useCallback((action: 'save' | 'save-to-inbox') => {
+    if (!snapshot) return;
+    const requestId = crypto.randomUUID();
+    chrome.runtime.sendMessage({
+      protocolVersion: 1,
+      type: 'capture/save',
+      requestId,
+      occurredAt: new Date().toISOString(),
+      payload: {
+        requestId,
+        selectedText: snapshot.text,
+        context: extractContext(snapshot),
+        pageUrl: window.location.href,
+        pageTitle: document.title,
+        domain: window.location.hostname,
+        requestedAction: action,
+      },
+    }).then((res) => {
+      if (res?.ok) {
+        // Close popover after successful save
+        send({ type: 'DISMISS' });
+        setSnapshot(null);
+        setExplanationContent(null);
+      } else {
+        setErrorMessage(res?.error?.userMessage || 'Save failed');
+        setPopoverState('failure');
+      }
+    }).catch((err) => {
+      setErrorMessage('Save error: ' + String(err));
+      setPopoverState('failure');
+    });
+  }, [snapshot, send]);
+
   return (
     <>
       {/* Trigger button — shown when armed */}
-      {state.matches('armed') && snapshot && (
+      {state.matches('armed') && snapshot && sitePolicy?.enabled && (
         <SelectionTrigger
           position={triggerPosition}
           onTrigger={handleTrigger}
@@ -179,25 +322,35 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
             }
             selectedText={snapshot.text}
             content={explanationContent || undefined}
-            error={undefined}
+            error={errorMessage || undefined}
             position={popoverPosition}
-            onSave={() => {
-              // M5: send save command to background
-              console.log('[LexiFlow] Save card');
-            }}
-            onSaveToInbox={() => {
-              // M5: send save-to-inbox command to background
-              console.log('[LexiFlow] Save to Inbox');
-            }}
+            onSave={() => handleSave('save')}
+            onSaveToInbox={() => handleSave('save-to-inbox')}
             onExpand={() => {
-              // Open dashboard card detail
-              console.log('[LexiFlow] Expand');
+              chrome.runtime.sendMessage({
+                protocolVersion: 1,
+                type: 'navigation/open',
+                requestId: crypto.randomUUID(),
+                occurredAt: new Date().toISOString(),
+                payload: { destination: 'cards' },
+              });
             }}
             onClose={() => {
+              if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+              if (currentTaskIdRef.current) {
+                chrome.runtime.sendMessage({
+                  protocolVersion: 1,
+                  type: 'aiTask/cancel',
+                  requestId: crypto.randomUUID(),
+                  occurredAt: new Date().toISOString(),
+                  payload: { taskId: currentTaskIdRef.current },
+                }).catch(() => {});
+              }
               send({ type: 'DISMISS' });
               setSnapshot(null);
               setContext(null);
               setExplanationContent(null);
+              setErrorMessage('');
             }}
             onRetry={() => {
               send({ type: 'RETRY' });

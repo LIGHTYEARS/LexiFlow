@@ -82,9 +82,10 @@ export async function saveSettings(settings: UserSettings): Promise<{
 
 /**
  * Update a partial settings patch. Merges with existing settings.
+ * Accepts a deep partial — nested objects are merged recursively.
  */
 export async function updateSettings(
-  patch: Partial<UserSettings>,
+  patch: Record<string, unknown>,
 ): Promise<{ success: boolean; settings?: UserSettings; error?: AppError }> {
   const current = await getSettings();
 
@@ -92,10 +93,10 @@ export async function updateSettings(
   const merged: UserSettings = {
     ...current,
     ...patch,
-    selection: { ...current.selection, ...patch.selection },
-    automation: { ...current.automation, ...patch.automation },
-    review: { ...current.review, ...patch.review },
-    model: { ...current.model, ...patch.model },
+    selection: { ...current.selection, ...(patch.selection as Record<string, unknown> || {}) },
+    automation: { ...current.automation, ...(patch.automation as Record<string, unknown> || {}) },
+    review: { ...current.review, ...(patch.review as Record<string, unknown> || {}) },
+    model: { ...current.model, ...(patch.model as Record<string, unknown> || {}) },
   };
 
   return { ...(await saveSettings(merged)), settings: merged };
@@ -123,20 +124,61 @@ export async function getSitePolicyView(origin: string): Promise<{
 /**
  * Store a credential (e.g., LiteLLM API key).
  * Credentials are stored separately from settings and never exported.
+ * Uses Web Crypto AES-GCM encryption at rest.
  */
+
+// Encryption key stored separately from the credential itself.
+const ENCRYPTION_KEY_KEY = 'lexiflow:encryption-key';
+
+async function getEncryptionKey(): Promise<CryptoKey> {
+  const result = await chrome.storage.local.get(ENCRYPTION_KEY_KEY);
+  const raw = result[ENCRYPTION_KEY_KEY] as string | undefined;
+  if (raw) {
+    const keyData = new Uint8Array(atob(raw).split('').map((c) => c.charCodeAt(0)));
+    return crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  }
+  // Generate a new key on first use
+  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+  const exported = await crypto.subtle.exportKey('raw', key);
+  const exportedStr = btoa(String.fromCharCode(...new Uint8Array(exported)));
+  await chrome.storage.local.set({ [ENCRYPTION_KEY_KEY]: exportedStr });
+  return key;
+}
+
+async function encryptValue(plaintext: string): Promise<string> {
+  const key = await getEncryptionKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(plaintext);
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptValue(encrypted: string): Promise<string> {
+  const key = await getEncryptionKey();
+  const combined = new Uint8Array(atob(encrypted).split('').map((c) => c.charCodeAt(0)));
+  const iv = combined.slice(0, 12);
+  const data = combined.slice(12);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+  return new TextDecoder().decode(decrypted);
+}
+
 export async function saveCredential(
   type: 'litellm-api-key',
   value: string,
 ): Promise<{ success: boolean; credentialRef?: string; error?: AppError }> {
   const credentialId = crypto.randomUUID();
-  const credential: Credential = {
-    id: credentialId,
-    type,
-    encryptedValue: value, // In production, use Web Crypto for encryption. M0 uses plain storage.
-    createdAt: new Date().toISOString(),
-  };
 
   try {
+    const encryptedValue = await encryptValue(value);
+    const credential: Credential = {
+      id: credentialId,
+      type,
+      encryptedValue,
+      createdAt: new Date().toISOString(),
+    };
     await chrome.storage.local.set({ [CREDENTIALS_KEY]: credential });
     return { success: true, credentialRef: credentialId };
   } catch {
@@ -161,7 +203,12 @@ export async function getCredentialValue(credentialRef: string): Promise<string 
     }
     const credential = parsed.data;
     if (credential.id === credentialRef) {
-      return credential.encryptedValue;
+      // Try to decrypt; if it fails (e.g., legacy plaintext storage), return as-is
+      try {
+        return await decryptValue(credential.encryptedValue);
+      } catch {
+        return credential.encryptedValue;
+      }
     }
     return null;
   } catch {

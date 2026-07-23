@@ -130,9 +130,26 @@ export type ExplainAccepted = {
 
 export type SaveCaptureCommand = {
   requestId: string;
-  selectionSnapshotId: string;
+  selectedText: string;
+  context?: {
+    sentenceBefore?: string;
+    sentenceContaining?: string;
+    sentenceAfter?: string;
+    paragraphExcerpt?: string;
+    nearestHeading?: string;
+    pageTitle: string;
+    url: string;
+    canonicalUrl?: string;
+    siteName?: string;
+    extractedAt: string;
+    quality: 'full' | 'partial' | 'selection_only';
+    omissions?: string[];
+  };
+  pageUrl: string;
+  pageTitle: string;
+  siteName?: string;
+  domain: string;
   requestedAction: 'save' | 'save-to-inbox';
-  idempotencyKey: string;
 };
 
 export type SaveCaptureResult = {
@@ -160,6 +177,7 @@ export type ApplyDecisionCommand = {
   captureId: string;
   suggestionRevision: number;
   action: ApplyDecisionAction;
+  targetCardId?: string;
   confirmationToken?: string;
 };
 
