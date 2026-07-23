@@ -1,13 +1,99 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useQuery, callMessage } from '@shared/ui/use-message';
 import type { DashboardCounts } from '@shared/protocol/protocol-map';
 
 /**
  * Popup — quick entry (PRD §5.3): today due, overdue, Inbox count, new this
- * week, and common actions.
+ * week, common actions, plus enabling LexiFlow on the current site.
+ *
+ * Enabling a site requires chrome.permissions.request, which must run inside a
+ * user gesture in the popup's own context — so the popup requests the origin
+ * permission directly, then asks the background to register + inject the
+ * content script (which is why the selection trigger appears without a reload).
  */
 export default function App(): React.JSX.Element {
   const { data, loading, error } = useQuery<DashboardCounts>('dashboard/counts');
+  const [tab, setTab] = useState<chrome.tabs.Tab | null>(null);
+  const [siteEnabled, setSiteEnabled] = useState<boolean | null>(null);
+  const [siteBusy, setSiteBusy] = useState(false);
+  const [siteMsg, setSiteMsg] = useState<string | undefined>();
+
+  const supported = !!tab?.url && /^https?:\/\//.test(tab.url);
+
+  const refreshAccess = useCallback(async (url: string) => {
+    try {
+      const res = await callMessage<{ enabled: boolean }>('page/check-access', { url });
+      setSiteEnabled(res.enabled);
+    } catch {
+      setSiteEnabled(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
+      setTab(active ?? null);
+      if (active?.url && /^https?:\/\//.test(active.url)) {
+        await refreshAccess(active.url);
+      } else {
+        setSiteEnabled(false);
+      }
+    })();
+  }, [refreshAccess]);
+
+  const originPatternOf = (url: string): string | null => {
+    try {
+      const u = new URL(url);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+      return `${u.protocol}//${u.host}/*`;
+    } catch {
+      return null;
+    }
+  };
+
+  const enableSite = async () => {
+    if (!tab?.url || !tab.id) return;
+    const pattern = originPatternOf(tab.url);
+    if (!pattern) {
+      setSiteMsg('This page type is not supported.');
+      return;
+    }
+    setSiteBusy(true);
+    setSiteMsg(undefined);
+    try {
+      // User gesture: request the origin permission here in the popup.
+      const granted = await chrome.permissions.request({ origins: [pattern] });
+      if (!granted) {
+        setSiteMsg('Permission was declined.');
+        return;
+      }
+      await callMessage('page/register-site', { url: tab.url, tabId: tab.id });
+      setSiteEnabled(true);
+      setSiteMsg('Enabled — select text on the page to see the trigger.');
+    } catch (e) {
+      setSiteMsg(e instanceof Error ? e.message : 'Could not enable this site.');
+    } finally {
+      setSiteBusy(false);
+    }
+  };
+
+  const disableSite = async () => {
+    if (!tab?.url) return;
+    const pattern = originPatternOf(tab.url);
+    if (!pattern) return;
+    setSiteBusy(true);
+    setSiteMsg(undefined);
+    try {
+      await chrome.permissions.remove({ origins: [pattern] });
+      await callMessage('page/disable-site', { url: tab.url });
+      setSiteEnabled(false);
+      setSiteMsg('Disabled on this site.');
+    } catch (e) {
+      setSiteMsg(e instanceof Error ? e.message : 'Could not disable this site.');
+    } finally {
+      setSiteBusy(false);
+    }
+  };
 
   const open = (destination: string) => {
     void callMessage('navigation/open', { destination });
@@ -24,6 +110,30 @@ export default function App(): React.JSX.Element {
       }}
     >
       <h1 style={{ fontSize: '18px', marginBottom: '16px' }}>LexiFlow</h1>
+
+      {/* Current-site enablement */}
+      <div style={{ marginBottom: '16px', padding: '10px', borderRadius: '8px', background: '#f5f5f5' }}>
+        {!supported ? (
+          <div style={{ fontSize: '13px', color: '#666' }}>LexiFlow can’t run on this page.</div>
+        ) : siteEnabled === null ? (
+          <div style={{ fontSize: '13px', color: '#666' }}>Checking site…</div>
+        ) : siteEnabled ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '13px', color: '#059669' }}>● Enabled on this site</span>
+            <button type="button" onClick={disableSite} disabled={siteBusy} style={ghostBtn}>
+              Disable
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '13px', color: '#666' }}>Not enabled here</span>
+            <button type="button" onClick={enableSite} disabled={siteBusy} style={{ ...primaryBtnSmall }}>
+              {siteBusy ? 'Enabling…' : 'Enable on this site'}
+            </button>
+          </div>
+        )}
+        {siteMsg && <div style={{ fontSize: '12px', color: '#555', marginTop: '6px' }}>{siteMsg}</div>}
+      </div>
 
       {loading && <p style={{ color: '#666', fontSize: '14px' }}>Loading…</p>}
       {error && <p style={{ color: '#dc2626', fontSize: '13px' }}>{error}</p>}
@@ -87,3 +197,24 @@ function ActionButton({
     </button>
   );
 }
+
+const primaryBtnSmall: React.CSSProperties = {
+  padding: '6px 10px',
+  borderRadius: '6px',
+  border: 'none',
+  background: '#4f46e5',
+  color: '#fff',
+  fontSize: '13px',
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+
+const ghostBtn: React.CSSProperties = {
+  padding: '6px 10px',
+  borderRadius: '6px',
+  border: '1px solid #e0e0e0',
+  background: '#fff',
+  color: '#333',
+  fontSize: '13px',
+  cursor: 'pointer',
+};

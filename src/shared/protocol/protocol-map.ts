@@ -162,6 +162,16 @@ export interface ProtocolMap {
   // ── Dashboard ──
   'dashboard/counts': () => AppResult<DashboardCounts>;
   'page/summary': (input: PageSummaryQuery) => AppResult<PageSummary>;
+
+  // ── Page access (site enable/disable for content-script injection) ──
+  'page/enable-site': (
+    input: { url: string; tabId?: number },
+  ) => AppResult<{ granted: boolean; originPattern: string }>;
+  'page/register-site': (
+    input: { url: string; tabId?: number },
+  ) => AppResult<{ registered: boolean; originPattern: string }>;
+  'page/disable-site': (input: { url: string }) => AppResult<{ removed: boolean }>;
+  'page/check-access': (input: { url: string }) => AppResult<{ enabled: boolean }>;
 }
 
 // ── Input/Output Type Placeholders ──

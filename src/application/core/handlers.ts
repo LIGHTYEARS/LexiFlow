@@ -8,6 +8,8 @@ import {
   removePageAccess,
   isSupportedPage,
   injectContentScriptIntoTab,
+  registerContentScriptsForOrigins,
+  getAuthorizedOrigins,
 } from '@infra/permissions/page-access-policy';
 import {
   countInboxByStatus,
@@ -99,6 +101,37 @@ export function registerCoreHandlers(): void {
 
     return ok(envelope.requestId, { granted: true, originPattern });
   });
+
+  // ── Page access: register + inject after the popup granted permission ──
+  // chrome.permissions.request must run in the popup's user-gesture context,
+  // so the popup grants the origin itself and then calls this to register the
+  // content script and inject it into the current tab (no page refresh needed).
+  messageRegistry.register<{ url: string; tabId?: number }, { registered: boolean; originPattern: string }>(
+    'page/register-site',
+    async (payload: unknown, envelope) => {
+      if (!payload || typeof payload !== 'object' || !('url' in payload) || typeof (payload as Record<string, unknown>).url !== 'string') {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
+      }
+      const { url, tabId } = payload as { url: string; tabId?: number };
+      if (!url || !isSupportedPage(url)) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Unsupported page type', false));
+      }
+      const originPattern = deriveOriginPattern(url);
+      if (!originPattern) {
+        return fail(envelope.requestId, createError('INVALID_INPUT', 'Cannot derive origin from URL', false));
+      }
+      // The popup already holds the permission; verify then register + inject.
+      const granted = await hasPageAccess(originPattern);
+      if (!granted) {
+        return fail(envelope.requestId, createError('PERMISSION_DENIED', 'Site not authorized', false));
+      }
+      await registerContentScriptsForOrigins(await getAuthorizedOrigins());
+      if (tabId) {
+        await injectContentScriptIntoTab(tabId);
+      }
+      return ok(envelope.requestId, { registered: true, originPattern });
+    },
+  );
 
   // ── Page access: disable current site ──
   messageRegistry.register<{ url: string }, { removed: boolean }>('page/disable-site', async (payload: unknown, envelope) => {
