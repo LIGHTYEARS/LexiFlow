@@ -10,12 +10,20 @@ import {
   ExplanationPopover,
   type ExplanationContent,
 } from './ExplanationPopover';
+import { sendMessage } from '@infra/messaging/browser-runtime';
 import type { PageSessionRef } from '@shared/protocol/page-session';
+import type {
+  AiTaskSnapshot,
+  ExplainAccepted,
+  SaveCaptureResult,
+} from '@shared/protocol/protocol-map';
+import type { QuickExplainResult } from '@adapters/ai/ai-result-schemas';
+import type { AppResult } from '@shared/protocol/envelope';
 
 /**
  * SelectionController — orchestrates selection detection, trigger button,
- * context extraction, and the explanation popover.
- * See technical-design/03 §5-9.
+ * context extraction, and the explanation popover, wired to the real background
+ * AI + capture pipeline. See technical-design/03 §5-9 and 05 §7.
  */
 export interface SelectionControllerProps {
   pageSession: PageSessionRef;
@@ -27,19 +35,29 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
   hostElement,
 }) => {
   const [snapshot, setSnapshot] = useState<SelectionSnapshot | null>(null);
-  const [, setContext] = useState<ContextEvidence | null>(null);
-  const [explanationContent, setExplanationContent] =
-    useState<ExplanationContent | null>(null);
-  const [, setPopoverState] = useState<'loading' | 'result' | 'failure'>('loading');
+  const contextRef = useRef<ContextEvidence | null>(null);
+  const [explanationContent, setExplanationContent] = useState<ExplanationContent | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | undefined>(undefined);
+  const [saveStatus, setSaveStatus] = useState<string | undefined>(undefined);
+  // The taskId of the in-flight explain request, used for cancel + stale-guard.
+  const activeTaskRef = useRef<string | null>(null);
 
   const observerRef = useRef<SelectionObserver | null>(null);
   const [state, send] = useMachine(selectionMachine);
+
+  const reset = useCallback(() => {
+    setSnapshot(null);
+    contextRef.current = null;
+    setExplanationContent(null);
+    setErrorMsg(undefined);
+    setSaveStatus(undefined);
+    activeTaskRef.current = null;
+  }, []);
 
   // Initialize selection observer
   useEffect(() => {
     const observer = new SelectionObserver(pageSession, hostElement);
     observerRef.current = observer;
-
     observer.onChange((newSnapshot) => {
       if (newSnapshot) {
         setSnapshot(newSnapshot);
@@ -48,104 +66,178 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
         send({ type: 'SELECTION_COLLAPSED' });
       }
     });
-
     observer.start();
-
-    return () => {
-      observer.stop();
-    };
+    return () => observer.stop();
   }, [pageSession, hostElement, send]);
+
+  // Run the explanation request against the background AI task pipeline.
+  const runExplain = useCallback(
+    async (snap: SelectionSnapshot, context: ContextEvidence) => {
+      setErrorMsg(undefined);
+      const requestId = crypto.randomUUID();
+      try {
+        const res = await sendMessage<AppResult<ExplainAccepted & { snapshot: AiTaskSnapshot }>>(
+          'selection/explain',
+          {
+            requestId,
+            selection: snap.text,
+            context: {
+              sentenceBefore: context.sentenceBefore,
+              sentenceContaining: context.sentenceContaining,
+              sentenceAfter: context.sentenceAfter,
+              paragraphExcerpt: context.paragraphExcerpt,
+              nearestHeading: context.nearestHeading,
+              pageTitle: context.pageTitle,
+              url: context.url,
+              siteName: context.siteName,
+              extractedAt: context.extractedAt,
+              quality: context.quality,
+            },
+            source: { origin: window.location.origin, urlWithoutFragment: context.url },
+            task: 'quick-explain',
+          },
+        );
+
+        if (!res.ok) {
+          send({ type: 'EXPLAIN_FAILED', error: res.error.userMessage });
+          setErrorMsg(res.error.userMessage);
+          return;
+        }
+        activeTaskRef.current = res.data.taskId;
+        const snapshot = res.data.snapshot;
+        if (snapshot.state === 'succeeded' && snapshot.result) {
+          const result = snapshot.result as QuickExplainResult;
+          setExplanationContent({
+            type: result.type,
+            chineseMeaning: result.chineseMeaning,
+            englishMeaning: result.englishMeaning,
+            contextMeaning: result.contextMeaning,
+            examples: result.examples,
+          });
+          send({ type: 'EXPLAIN_SUCCEEDED' });
+        } else if (snapshot.state === 'cancelled') {
+          // Ignore — cancellation already handled locally.
+        } else {
+          const msg = snapshot.error || 'Could not generate an explanation.';
+          send({ type: 'EXPLAIN_FAILED', error: msg });
+          setErrorMsg(msg);
+        }
+      } catch {
+        const msg = 'Could not reach LexiFlow. You can still save the text to Inbox.';
+        send({ type: 'EXPLAIN_FAILED', error: msg });
+        setErrorMsg(msg);
+      }
+    },
+    [send],
+  );
 
   // Handle explicit trigger (click or keyboard shortcut)
   const handleTrigger = useCallback(() => {
+    if (!snapshot) return;
     send({ type: 'EXPLICIT_TRIGGER' });
+    const extractedContext = extractContext(snapshot);
+    contextRef.current = extractedContext;
+    send({ type: 'CONTEXT_READY', context: extractedContext });
+    void runExplain(snapshot, extractedContext);
+  }, [snapshot, send, runExplain]);
 
-    // Extract context locally (fast, no network)
-    if (snapshot) {
-      const extractedContext = extractContext(snapshot);
-      setContext(extractedContext);
-      send({ type: 'CONTEXT_READY', context: extractedContext });
-
-      // M4: Send explain request to background via message
-      // For M3, simulate with a delay to show loading state
-      setPopoverState('loading');
-
-      // Placeholder: actual model request in M4
-      setTimeout(() => {
-        setExplanationContent({
-          type: 'word',
-          chineseMeaning: '（模型解释将在 M4 实现）',
-          englishMeaning: '(Model explanation will be implemented in M4)',
-          contextMeaning: '文中含义：此处指...',
-          examples: ['Example sentence here.'],
-        });
-        setPopoverState('result');
-        send({ type: 'EXPLAIN_SUCCEEDED' });
-      }, 800);
+  // Cancel an in-flight explanation (§7.6).
+  const handleCancel = useCallback(() => {
+    if (activeTaskRef.current) {
+      void sendMessage('aiTask/cancel', { taskId: activeTaskRef.current });
     }
-  }, [snapshot, send]);
+    send({ type: 'CANCEL' });
+  }, [send]);
 
-  // Handle keyboard shortcuts
+  // Save (to library or Inbox). Reports the resulting status (§6.1.7, §19.1).
+  const doSave = useCallback(
+    async (action: 'save' | 'save-to-inbox') => {
+      const snap = snapshot;
+      const context = contextRef.current;
+      if (!snap) return;
+      setSaveStatus('saving');
+      const ctx = context ?? extractContext(snap);
+      try {
+        const res = await sendMessage<AppResult<SaveCaptureResult>>('capture/save', {
+          requestId: crypto.randomUUID(),
+          selectedText: snap.text,
+          context: {
+            sentenceBefore: ctx.sentenceBefore,
+            sentenceContaining: ctx.sentenceContaining,
+            sentenceAfter: ctx.sentenceAfter,
+            paragraphExcerpt: ctx.paragraphExcerpt,
+            nearestHeading: ctx.nearestHeading,
+            pageTitle: ctx.pageTitle,
+            url: ctx.url,
+            siteName: ctx.siteName,
+            extractedAt: ctx.extractedAt,
+            quality: ctx.quality,
+          },
+          pageUrl: ctx.url,
+          pageTitle: ctx.pageTitle,
+          siteName: ctx.siteName,
+          requestedAction: action,
+        });
+        if (!res.ok) {
+          setSaveStatus('failed: ' + res.error.userMessage);
+          return;
+        }
+        setSaveStatus(statusLabel(res.data.status));
+        // Auto-close shortly after a successful save.
+        window.setTimeout(() => {
+          send({ type: 'DISMISS' });
+          reset();
+        }, 1200);
+      } catch {
+        setSaveStatus('failed: could not save');
+      }
+    },
+    [snapshot, send, reset],
+  );
+
+  // Keyboard shortcuts (fallback to local handling; background also forwards).
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Alt+L: trigger explanation
       if (e.altKey && (e.key === 'l' || e.key === 'L')) {
         e.preventDefault();
-        if (state.matches('armed') && snapshot) {
-          handleTrigger();
-        }
+        if (state.matches('armed') && snapshot) handleTrigger();
       }
-
-      // Escape: close
+      if (e.altKey && (e.key === 'i' || e.key === 'I')) {
+        e.preventDefault();
+        if (snapshot) void doSave('save-to-inbox');
+      }
       if (e.key === 'Escape') {
-        if (
-          state.matches('armed') ||
-          state.matches('result') ||
-          state.matches('failure') ||
-          state.matches('explaining')
-        ) {
+        if (state.matches('explaining') || state.matches('extracting')) {
+          handleCancel();
+        } else if (state.matches('armed') || state.matches('result') || state.matches('failure')) {
           send({ type: 'ESC' });
-          setSnapshot(null);
-          setContext(null);
-          setExplanationContent(null);
+          reset();
         }
       }
     };
-
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [state, snapshot, handleTrigger, send]);
+  }, [state, snapshot, handleTrigger, handleCancel, doSave, send, reset]);
 
-  // Handle scroll/resize — close popover if it would go off-screen
+  // Listen for commands forwarded from the background (keyboard shortcuts).
   useEffect(() => {
-    const handleScroll = () => {
-      if (
-        state.matches('result') ||
-        state.matches('failure') ||
-        state.matches('explaining')
-      ) {
-        // Keep popover open but repositioning is handled by Floating UI (M3+)
-        // For now, dismiss on scroll to avoid stale positioning
+    const onCommand = (e: Event) => {
+      const command = (e as CustomEvent<string>).detail;
+      if (command === 'open-explanation' && state.matches('armed') && snapshot) handleTrigger();
+      else if (command === 'save-to-inbox' && snapshot) void doSave('save-to-inbox');
+      else if (command === 'close-ui') {
         send({ type: 'DISMISS' });
-        setSnapshot(null);
-        setContext(null);
-        setExplanationContent(null);
+        reset();
       }
     };
+    window.addEventListener('lexiflow:command', onCommand);
+    return () => window.removeEventListener('lexiflow:command', onCommand);
+  }, [state, snapshot, handleTrigger, doSave, send, reset]);
 
-    document.addEventListener('scroll', handleScroll, true);
-    return () => document.removeEventListener('scroll', handleScroll, true);
-  }, [state, send]);
-
-  // Calculate trigger button position
   const triggerPosition = snapshot
-    ? {
-        x: snapshot.anchor.unionRect.x,
-        y: snapshot.anchor.unionRect.y,
-      }
+    ? { x: snapshot.anchor.unionRect.x, y: snapshot.anchor.unionRect.y }
     : { x: 0, y: 0 };
 
-  // Calculate popover position (below selection, or above if not enough space)
   const popoverPosition = snapshot
     ? {
         x: Math.min(snapshot.anchor.unionRect.x, window.innerWidth - 400),
@@ -153,58 +245,58 @@ export const SelectionController: React.FC<SelectionControllerProps> = ({
       }
     : { x: 0, y: 0 };
 
+  const popoverActive =
+    state.matches('extracting') ||
+    state.matches('explaining') ||
+    state.matches('result') ||
+    state.matches('failure');
+
   return (
     <>
-      {/* Trigger button — shown when armed */}
       {state.matches('armed') && snapshot && (
-        <SelectionTrigger
-          position={triggerPosition}
-          onTrigger={handleTrigger}
-          shortcutHint="Alt+L"
-        />
+        <SelectionTrigger position={triggerPosition} onTrigger={handleTrigger} shortcutHint="Alt+L" />
       )}
 
-      {/* Popover — shown when explaining, result, or failure */}
-      {(state.matches('explaining') ||
-        state.matches('result') ||
-        state.matches('failure')) &&
-        snapshot && (
-          <ExplanationPopover
-            state={
-              state.matches('explaining')
-                ? 'loading'
-                : state.matches('failure')
-                  ? 'failure'
-                  : 'result'
-            }
-            selectedText={snapshot.text}
-            content={explanationContent || undefined}
-            error={undefined}
-            position={popoverPosition}
-            onSave={() => {
-              // M5: send save command to background
-              console.log('[LexiFlow] Save card');
-            }}
-            onSaveToInbox={() => {
-              // M5: send save-to-inbox command to background
-              console.log('[LexiFlow] Save to Inbox');
-            }}
-            onExpand={() => {
-              // Open dashboard card detail
-              console.log('[LexiFlow] Expand');
-            }}
-            onClose={() => {
-              send({ type: 'DISMISS' });
-              setSnapshot(null);
-              setContext(null);
-              setExplanationContent(null);
-            }}
-            onRetry={() => {
-              send({ type: 'RETRY' });
-              handleTrigger();
-            }}
-          />
-        )}
+      {popoverActive && snapshot && (
+        <ExplanationPopover
+          state={
+            state.matches('result')
+              ? 'result'
+              : state.matches('failure')
+                ? 'failure'
+                : 'loading'
+          }
+          selectedText={snapshot.text}
+          content={explanationContent || undefined}
+          error={errorMsg}
+          saveStatus={saveStatus}
+          position={popoverPosition}
+          onSave={() => void doSave('save')}
+          onSaveToInbox={() => void doSave('save-to-inbox')}
+          onExpand={() => void sendMessage('navigation/open', { destination: 'dashboard' })}
+          onCancel={handleCancel}
+          onClose={() => {
+            send({ type: 'DISMISS' });
+            reset();
+          }}
+          onRetry={handleTrigger}
+        />
+      )}
     </>
   );
 };
+
+function statusLabel(status: SaveCaptureResult['status']): string {
+  switch (status) {
+    case 'new-card':
+      return 'Saved as new card';
+    case 'appended':
+      return 'Appended to existing card';
+    case 'skipped':
+      return 'Skipped (duplicate)';
+    case 'inbox':
+      return 'Saved to Inbox';
+    case 'failed':
+      return 'Save failed';
+  }
+}

@@ -29,10 +29,12 @@ export interface ExplanationPopoverProps {
   selectedText: string;
   content?: ExplanationContent;
   error?: string;
+  saveStatus?: string;
   position: { x: number; y: number };
   onSave: () => void;
   onSaveToInbox: () => void;
   onExpand: () => void;
+  onCancel: () => void;
   onClose: () => void;
   onRetry: () => void;
 }
@@ -42,17 +44,36 @@ export const ExplanationPopover: React.FC<ExplanationPopoverProps> = ({
   selectedText,
   content,
   error,
+  saveStatus,
   position,
   onSave,
   onSaveToInbox,
   onExpand,
+  onCancel,
   onClose,
   onRetry,
 }) => {
+  const dialogRef = React.useRef<HTMLDivElement>(null);
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Move focus into the dialog on open; restore to the previously focused
+  // element on close (§16.3 predictable focus).
+  React.useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+    return () => previouslyFocused?.focus?.();
+  }, []);
+
   return (
     <div
+      ref={dialogRef}
       role="dialog"
+      aria-modal="false"
       aria-label="LexiFlow explanation"
+      tabIndex={-1}
       style={{
         position: 'fixed',
         left: `${position.x}px`,
@@ -70,8 +91,14 @@ export const ExplanationPopover: React.FC<ExplanationPopoverProps> = ({
         fontSize: '14px',
         lineHeight: '1.5',
         color: '#1a1a1a',
+        transition: prefersReducedMotion ? 'none' : 'opacity 120ms ease',
       }}
     >
+      {/* Live region announces status changes (§16.2) */}
+      <div aria-live="polite" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+        {state === 'loading' ? 'Generating explanation' : state === 'failure' ? 'Explanation failed' : 'Explanation ready'}
+        {saveStatus ? `. ${saveStatus}` : ''}
+      </div>
       {/* Header with selected text */}
       <div
         style={{
@@ -138,6 +165,22 @@ export const ExplanationPopover: React.FC<ExplanationPopoverProps> = ({
           >
             正在解释...
           </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              marginTop: '12px',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: '1px solid #e0e0e0',
+              background: '#fff',
+              color: '#333',
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            取消
+          </button>
         </div>
       )}
 
@@ -223,6 +266,19 @@ export const ExplanationPopover: React.FC<ExplanationPopoverProps> = ({
           >
             {error || '解释失败，请重试或保存原文到 Inbox'}
           </div>
+        </div>
+      )}
+
+      {/* Save status feedback (§19.1: new/appended/skipped/inbox/failed) */}
+      {saveStatus && saveStatus !== 'saving' && (
+        <div
+          style={{
+            marginTop: '8px',
+            fontSize: '12px',
+            color: saveStatus.startsWith('failed') ? '#dc2626' : '#059669',
+          }}
+        >
+          {saveStatus}
         </div>
       )}
 

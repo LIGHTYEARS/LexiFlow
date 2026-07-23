@@ -36,8 +36,25 @@ async function preflight(): Promise<{
 }
 
 /**
+ * Create a protective backup snapshot before a schema upgrade (PRD §15.3,
+ * §17.2). Stored under a meta key so it survives worker restarts and can be
+ * restored if the upgrade fails. Skipped for the initial v0→v1 creation
+ * (no user data yet).
+ */
+async function createPreUpgradeBackup(): Promise<void> {
+  // Lazy import: dexie-export-import augments the Dexie prototype and touches
+  // `self`, so only load it in the worker/runtime, never at module eval time.
+  const { exportDB } = await import('dexie-export-import');
+  const blob = await exportDB(db, { prettyJson: false });
+  const text = await blob.text();
+  await db.meta.put({ key: 'preUpgradeBackup', value: text });
+  await db.meta.put({ key: 'preUpgradeBackupAt', value: new Date().toISOString() });
+}
+
+/**
  * Run database migrations up to the current version.
  * This is called on extension startup.
+ * Protocol: preflight → (backup → upgrade) → invariant verification → commit.
  */
 export async function runMigrations(): Promise<MigrationStatus> {
   try {
@@ -49,17 +66,31 @@ export async function runMigrations(): Promise<MigrationStatus> {
       return { phase: 'complete', message: 'Schema up to date' };
     }
 
-    // For v1 (initial), the schema is created by Dexie versioning automatically.
-    // Future migrations will be handled here.
+    // v0 → v1: initial schema creation. Dexie creates the schema on first open,
+    // so there is no pre-existing user data to back up.
     if (currentVersion === 0) {
-      // v0 → v1: initial schema creation
-      // Dexie creates the schema on first open, so we just need to mark the version
       await setSchemaVersion(CURRENT_SCHEMA_VERSION);
+      const violations = await verifyInvariants();
+      if (violations.length > 0) {
+        return { phase: 'error', error: createError('STORAGE_FAILURE', 'Invariant check failed after schema creation', false) };
+      }
       return { phase: 'complete', message: 'Schema v1 created' };
     }
 
-    // Future version migrations would go here
-    return { phase: 'complete', message: 'No migrations needed' };
+    // Real upgrade path (v>=1 → higher): back up first, then verify (§15.3, §17.2).
+    await createPreUpgradeBackup();
+    // (Future per-version migration steps run here, wrapped so a failure leaves
+    // the pre-upgrade backup intact for recovery.)
+    await setSchemaVersion(CURRENT_SCHEMA_VERSION);
+
+    const violations = await verifyInvariants();
+    if (violations.length > 0) {
+      return {
+        phase: 'error',
+        error: createError('STORAGE_FAILURE', `Upgrade verification failed: ${violations.length} invariant violation(s). Pre-upgrade backup retained.`, true),
+      };
+    }
+    return { phase: 'complete', message: `Migrated to schema v${CURRENT_SCHEMA_VERSION}` };
   } catch (error) {
     const appError =
       error && typeof error === 'object' && 'code' in error && 'userMessage' in error && 'retryable' in error

@@ -9,6 +9,12 @@ import {
   isSupportedPage,
   injectContentScriptIntoTab,
 } from '@infra/permissions/page-access-policy';
+import {
+  countInboxByStatus,
+  countDueReviews,
+} from '@infra/db/repository-impl';
+import { db } from '@infra/db/database';
+import { canonicalizeUrl } from '@shared/utils/url';
 import type {
   SitePolicyQuery,
   SitePolicyView,
@@ -26,7 +32,7 @@ import type {
 export function registerCoreHandlers(): void {
   // ── Settings: site policy query ──
   messageRegistry.register<SitePolicyQuery, SitePolicyView>('settings/site-policy', async (payload: unknown, envelope) => {
-    if (!payload || typeof payload !== 'object' || !('origin' in payload) || typeof (payload as any).origin !== 'string') {
+    if (!payload || typeof payload !== 'object' || !('origin' in payload) || typeof (payload as Record<string, unknown>).origin !== 'string') {
       return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
     }
     const { origin } = payload as { origin: string };
@@ -54,13 +60,15 @@ export function registerCoreHandlers(): void {
         baseUrl: settings.model.baseUrl,
         hasCredential: !!settings.model.credentialRef,
         taskModels: settings.model.taskModels,
+        taskPrompts: settings.model.taskPrompts,
+        requestTimeoutMs: settings.model.requestTimeoutMs,
       },
     });
   });
 
   // ── Page access: enable current site ──
   messageRegistry.register<{ url: string; tabId?: number }, { granted: boolean; originPattern: string }>('page/enable-site', async (payload: unknown, envelope) => {
-    if (!payload || typeof payload !== 'object' || !('url' in payload) || typeof (payload as any).url !== 'string') {
+    if (!payload || typeof payload !== 'object' || !('url' in payload) || typeof (payload as Record<string, unknown>).url !== 'string') {
       return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
     }
     const { url, tabId } = payload as { url: string; tabId?: number };
@@ -94,7 +102,7 @@ export function registerCoreHandlers(): void {
 
   // ── Page access: disable current site ──
   messageRegistry.register<{ url: string }, { removed: boolean }>('page/disable-site', async (payload: unknown, envelope) => {
-    if (!payload || typeof payload !== 'object' || !('url' in payload) || typeof (payload as any).url !== 'string') {
+    if (!payload || typeof payload !== 'object' || !('url' in payload) || typeof (payload as Record<string, unknown>).url !== 'string') {
       return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
     }
     const { url } = payload as { url: string };
@@ -109,7 +117,7 @@ export function registerCoreHandlers(): void {
 
   // ── Page access: check if site is enabled ──
   messageRegistry.register<{ url: string }, { enabled: boolean }>('page/check-access', async (payload: unknown, envelope) => {
-    if (!payload || typeof payload !== 'object' || !('url' in payload) || typeof (payload as any).url !== 'string') {
+    if (!payload || typeof payload !== 'object' || !('url' in payload) || typeof (payload as Record<string, unknown>).url !== 'string') {
       return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
     }
     const { url } = payload as { url: string };
@@ -123,7 +131,7 @@ export function registerCoreHandlers(): void {
 
   // ── Navigation: open extension page ──
   messageRegistry.register<OpenDestinationCommand, void>('navigation/open', async (payload: unknown, envelope) => {
-    if (!payload || typeof payload !== 'object' || !('destination' in payload) || typeof (payload as any).destination !== 'string') {
+    if (!payload || typeof payload !== 'object' || !('destination' in payload) || typeof (payload as Record<string, unknown>).destination !== 'string') {
       return fail(envelope.requestId, createError('INVALID_INPUT', 'Invalid payload', false));
     }
     const { destination } = payload as { destination: 'dashboard' | 'review' | 'inbox' | 'settings'; tabId?: number };
@@ -143,26 +151,54 @@ export function registerCoreHandlers(): void {
     return ok(envelope.requestId, undefined);
   });
 
-  // ── Dashboard: get counts (placeholder — real implementation in M5-M7) ──
+  // ── Dashboard: get counts (real repository queries) ──
   messageRegistry.register<unknown, DashboardCounts>('dashboard/counts', async (_payload: unknown, envelope) => {
-    // Placeholder counts — real queries come from repository in later milestones
+    const [dueCounts, inboxCounts] = await Promise.all([countDueReviews(), countInboxByStatus()]);
+    // New this week: cards created within the last 7 days.
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const newThisWeek = await db.cards
+      .filter((c) => c.status !== 'deleted' && c.createdAt >= weekAgo)
+      .count();
     return ok(envelope.requestId, {
-      todayDue: 0,
-      overdue: 0,
-      inbox: 0,
-      newThisWeek: 0,
+      todayDue: dueCounts.due + dueCounts.learning,
+      overdue: dueCounts.overdue,
+      inbox: inboxCounts.pending + inboxCounts.processing,
+      newThisWeek,
     });
   });
 
-  // ── Page summary (placeholder — real implementation in M6) ──
+  // ── Page summary (real repository query by canonical URL) ──
   messageRegistry.register<PageSummaryQuery, PageSummary>('page/summary', async (payload: unknown, envelope) => {
-    const { pageUrl } = payload as { pageUrl?: string };
+    const { pageUrl } = (payload ?? {}) as { pageUrl?: string };
+    if (!pageUrl) {
+      return ok(envelope.requestId, { pageId: '', pageUrl: '', title: '', cardCount: 0, inboxCount: 0 });
+    }
+    let canonicalKey: string;
+    try {
+      canonicalKey = canonicalizeUrl(pageUrl);
+    } catch {
+      return ok(envelope.requestId, { pageId: '', pageUrl, title: '', cardCount: 0, inboxCount: 0 });
+    }
+    const page = await db.sourcePages.get({ canonicalKey });
+    if (!page) {
+      return ok(envelope.requestId, { pageId: '', pageUrl, title: '', cardCount: 0, inboxCount: 0 });
+    }
+    const captures = await db.sourceCaptures.where('pageId').equals(page.id).toArray();
+    const captureIds = captures.map((c) => c.id);
+    const links = captureIds.length
+      ? await db.cardSourceLinks.where('sourceCaptureId').anyOf(captureIds).toArray()
+      : [];
+    const cardCount = new Set(links.map((l) => l.cardId)).size;
+    const inboxCount = captureIds.length
+      ? await db.inboxItems.where('sourceCaptureId').anyOf(captureIds).filter((i) => i.status === 'pending').count()
+      : 0;
     return ok(envelope.requestId, {
-      pageId: '',
-      pageUrl: pageUrl || '',
-      title: '',
-      cardCount: 0,
-      inboxCount: 0,
+      pageId: page.id,
+      pageUrl: page.url,
+      title: page.title,
+      cardCount,
+      inboxCount,
+      lastCapturedAt: page.lastSeenAt,
     });
   });
 }

@@ -293,6 +293,7 @@ export type RecordReviewInput = {
   answer?: string;
   durationMs?: number;
   confirmedErrorTypes?: ErrorType[];
+  source?: ReviewEvent['source'];
 };
 
 /**
@@ -356,7 +357,7 @@ export async function recordReviewTransaction(
         previousStateHash: input.previousStateHash,
         resultingState: input.resultingState,
         mode: validatedMode,
-        source: 'review',
+        source: input.source ?? 'review',
       };
       await db.reviewEvents.add(reviewEvent);
 

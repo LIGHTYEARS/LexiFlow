@@ -4,7 +4,7 @@ Personal English reading & expression learning Chrome extension.
 
 ## Status
 
-🚧 **Early development** — Currently in M0 (Scaffold). See [PRD.md](PRD.md) for product requirements and [docs/technical-design/](docs/technical-design/) for technical specifications.
+🟢 **P0/P1 feature-complete** — the full core loop is implemented and wired end-to-end: reading-time capture → AI quick-explain → dedup → safe save/Inbox → knowledge base & search → FSRS review & error tracking → targeted practice → full backup/restore. All gates in `pnpm release:verify` pass (lint, typecheck, static security gates, tests, build, manifest). See [PRD.md](PRD.md) for product requirements and [docs/technical-design/](docs/technical-design/) for technical specifications.
 
 ## Tech Stack
 
@@ -67,12 +67,10 @@ See [docs/technical-design/01-architecture-and-technology-baseline.md](docs/tech
 | M1 | Runtime & Communication Layer | ✅ Done |
 | M2 | Data Layer & Domain Model | ✅ Done |
 | M3 | Selection Trigger & Context Extraction | ✅ Done |
-| M4 | AI Task Execution | ⬜ Planned |
-| M3 | Selection Trigger & Context Extraction | ⬜ Planned |
-| M4 | AI Task Execution | ⬜ Planned |
-| M5 | Capture, Dedup & Inbox | ⬜ Planned |
-| M6 | Knowledge Library & Search | ⬜ Planned |
-| M7 | FSRS Review & Error Tracking | ⬜ Planned |
-| M8 | Backup, Import & Disaster Recovery | ⬜ Planned |
-| M9 | Targeted Practice (P1) | ⬜ Planned |
-| M10 | Release Gates & Verification | ⬜ Planned |
+| M4 | AI Task Execution (LiteLLM via AI SDK) | ✅ Done |
+| M5 | Capture, Dedup & Inbox | ✅ Done |
+| M6 | Knowledge Library & Search | ✅ Done |
+| M7 | FSRS Review & Error Tracking | ✅ Done |
+| M8 | Backup, Import & Disaster Recovery | ✅ Done |
+| M9 | Targeted Practice (P1) | ✅ Done |
+| M10 | Release Gates & Verification | ✅ Done |

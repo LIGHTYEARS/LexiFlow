@@ -7,6 +7,13 @@ import {
   getAuthorizedOrigins,
 } from '@infra/permissions/page-access-policy';
 import { registerCoreHandlers } from '@app/core/handlers';
+import { registerAiTaskHandlers } from '@app/core/ai-task-handlers';
+import { registerCaptureHandlers } from '@app/core/capture-handlers';
+import { registerKnowledgeHandlers, registerTagHandlers } from '@app/core/knowledge-handlers';
+import { registerReviewHandlers } from '@app/core/review-handlers';
+import { registerInboxHandlers } from '@app/core/inbox-handlers';
+import { registerPracticeHandlers } from '@app/core/practice-handlers';
+import { registerDataHandlers } from '@app/core/data-handlers';
 import { runMigrations } from '@infra/db/migrations';
 import { fail, createError } from '@shared/protocol/envelope';
 
@@ -29,6 +36,14 @@ export default defineBackground(() => {
 
   // ── Register all message handlers ──
   registerCoreHandlers();
+  registerAiTaskHandlers();
+  registerCaptureHandlers();
+  registerKnowledgeHandlers();
+  registerTagHandlers();
+  registerReviewHandlers();
+  registerInboxHandlers();
+  registerPracticeHandlers();
+  registerDataHandlers();
 
   // ── Startup: Register content scripts for already-authorized origins ──
   getAuthorizedOrigins().then((origins) => {
@@ -109,15 +124,20 @@ export default defineBackground(() => {
  */
 async function handleCommand(command: string): Promise<void> {
   try {
+    // Navigation commands open extension pages directly.
+    if (command === 'start-review') {
+      await chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html#/review') });
+      return;
+    }
+
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || tab.id === undefined) return;
 
-    // Send command to content script if the page is authorized
+    // Page commands are forwarded to the content script if the page is authorized.
     const origins = await getAuthorizedOrigins();
     const tabUrl = tab.url;
     if (tabUrl) {
       const isAuthorized = origins.some((origin) => {
-        // Simple match: convert origin pattern to regex check
         const pattern = origin.replace(/\*/g, '.*');
         return new RegExp('^' + pattern + '$').test(tabUrl);
       });

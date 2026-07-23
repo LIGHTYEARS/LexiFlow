@@ -64,6 +64,15 @@ export function isHttpUrl(url: string): boolean {
 }
 
 /**
+ * Extract the lowercase hostname (domain) from a URL. Returns null if invalid.
+ */
+export function hostnameOf(url: string): string | null {
+  const parsed = parseUrl(url);
+  if (!parsed) return null;
+  return parsed.hostname.toLowerCase();
+}
+
+/**
  * Remove fragment from a URL (for provenance display).
  */
 export function removeFragment(url: string): string {

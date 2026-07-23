@@ -57,11 +57,18 @@ const RULES = [
   },
   {
     id: 'no-url-in-message-schema',
-    description: 'Message schemas must not contain controllable URL fields',
+    description: 'Message schemas must not let an untrusted context set the model endpoint or credentials',
+    // Security intent (design 05 §9, 11 §4): a content-script/page message must
+    // never carry the LLM baseURL, apiKey, arbitrary headers, or fetch options —
+    // those come only from trusted settings. Provenance `url`/`path` fields (the
+    // web page being captured, §7.5) are DATA, not endpoint control, so they are
+    // allowed. The single trusted credential-setter is exempted via an explicit
+    // audit marker on its line.
     forbidden: [
       {
-        pattern: /\b(url|path|method|headers|apiKey|fetchOptions)(?![a-zA-Z])\s*[?:]/,
-        message: 'Controllable network field in message schema. Only trusted config may set URLs.',
+        pattern: /\b(baseUrl|baseURL|endpoint|headers|apiKey|fetchOptions)(?![a-zA-Z])\s*[?:]/,
+        message: 'Controllable endpoint/credential field in message schema. Only trusted config may set these.',
+        allowLineMarker: '@trusted-credential-input',
       },
     ],
     exclude: ['**/node_modules/**', '**/tests/**'],
@@ -133,8 +140,15 @@ export function runStaticGates() {
       }
 
       for (const forbidden of rule.forbidden || []) {
-        if (forbidden.pattern.test(content)) {
+        // Line-level scan so we can honor a per-line audit marker exemption.
+        const lines = content.split('\n');
+        // Build a fresh, non-global regex per line to avoid lastIndex state.
+        const perLine = new RegExp(forbidden.pattern.source, forbidden.pattern.flags.replace('g', ''));
+        for (const line of lines) {
+          if (!perLine.test(line)) continue;
+          if (forbidden.allowLineMarker && line.includes(forbidden.allowLineMarker)) continue;
           violations.push(`${relativePath}: ${forbidden.message}`);
+          break;
         }
       }
     }

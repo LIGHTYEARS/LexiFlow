@@ -33,6 +33,14 @@ export default defineConfig({
         suggested_key: { default: 'Alt+Escape' },
         description: 'Close LexiFlow page UI',
       },
+      // No suggested_key (Chrome MV3 limits suggested keys to 4); user can
+      // assign these in chrome://extensions/shortcuts (§16.1).
+      'save-selection': {
+        description: 'Save current selection as a card',
+      },
+      'expand-explanation': {
+        description: 'Expand the current explanation',
+      },
     },
     content_security_policy: {
       extension_pages: "script-src 'self'; object-src 'self'",

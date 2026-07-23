@@ -95,9 +95,9 @@ async function getTabId(): Promise<number> {
 
 /**
  * Handle keyboard commands forwarded from background.
+ * Dispatches a DOM CustomEvent that the SelectionController subscribes to,
+ * so background-routed shortcuts drive the same actions as local keydowns.
  */
 function handleCommand(command: string): void {
-  console.log('[LexiFlow] Command received in content:', command);
-  // Command handling is done via keyboard events in SelectionController
-  // (Alt+L triggers explanation, Escape closes)
+  window.dispatchEvent(new CustomEvent('lexiflow:command', { detail: command }));
 }

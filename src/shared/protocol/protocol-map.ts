@@ -32,6 +32,9 @@ export interface ProtocolMap {
   'capture/applyDecision': (
     input: ApplyDecisionCommand,
   ) => AppResult<SaveCaptureResult>;
+  'capture/mintConfirmation': (
+    input: { targetCardId: string; captureId: string },
+  ) => AppResult<{ token: string }>;
   'inbox/batchPreview': (
     input: InboxBatchPreviewCommand,
   ) => AppResult<InboxBatchPreview>;
@@ -58,6 +61,28 @@ export interface ProtocolMap {
   'knowledge/getPageSummary': (
     input: { canonicalPageKey: string },
   ) => AppResult<PageSummary>;
+  'knowledge/listInbox': (
+    input: { status?: string; limit?: number; cursor?: string },
+  ) => AppResult<{ items: InboxListItem[]; nextCursor?: string }>;
+  'knowledge/listSources': (
+    input: { limit?: number; cursor?: string },
+  ) => AppResult<{ pages: SourcePageListItem[]; nextCursor?: string }>;
+  'knowledge/stats': () => AppResult<KnowledgeStats>;
+
+  // ── Tags ──
+  'tags/list': () => AppResult<{ tags: Array<{ id: string; name: string; cardCount: number }> }>;
+  'tags/create': (input: { name: string }) => AppResult<{ id: string; isNew: boolean }>;
+  'tags/rename': (input: { tagId: string; newName: string }) => AppResult<{ renamed: boolean }>;
+  'tags/delete': (input: { tagId: string; confirmationToken: string }) => AppResult<{ deleted: boolean }>;
+  'tags/merge': (
+    input: { sourceTagId: string; targetTagId: string; confirmationToken: string },
+  ) => AppResult<{ merged: boolean }>;
+  'tags/bulkModify': (
+    input: { cardIds: string[]; tagId: string; action: 'add' | 'remove'; confirmationToken: string },
+  ) => AppResult<{ modified: number }>;
+  'tags/mintConfirmation': (
+    input: { operation: 'tags.bulk-modify' },
+  ) => AppResult<{ token: string }>;
 
   // ── Review & FSRS ──
   'review/createSession': (
@@ -81,6 +106,15 @@ export interface ProtocolMap {
   ) => AppResult<RebuildReport>;
 
   // ── Practice ──
+  'practice/generate': (
+    input: { source: unknown; practiceType: string },
+  ) => AppResult<{ sessionId: string; itemCount: number }>;
+  'practice/recordAttempt': (
+    input: { itemId: string; userAnswer: string; outcome: string; fsrsRating?: string },
+  ) => AppResult<{ attemptId: string }>;
+  'practice/getSession': (
+    input: { sessionId: string },
+  ) => AppResult<{ items: Array<{ itemId: string; type: string; prompt: string; explanation?: string; choices?: string[] }> }>;
   'practice/previewFsrsImpact': (
     input: { practiceAttemptIds: string[] },
   ) => AppResult<FsrsImpactPreview>;
@@ -104,7 +138,26 @@ export interface ProtocolMap {
   ) => AppResult<SitePolicyView>;
   'settings/get': () => AppResult<UserSettingsView>;
   'settings/update': (input: SettingsUpdateCommand) => AppResult<{ updated: boolean }>;
+  // Trusted credential setter — handler rejects content-script senders (data-handlers.ts)
+  'settings/setCredential': (input: { apiKey: string }) => AppResult<{ credentialRef: string }>; // @trusted-credential-input
+  'settings/clearCredential': () => AppResult<{ removed: boolean }>;
   'navigation/open': (input: OpenDestinationCommand) => AppResult<void>;
+
+  // ── Data & Backup ──
+  'data/exportBackup': () => AppResult<{ manifest: unknown; data: string }>;
+  'data/exportCsv': () => AppResult<{ csv: string }>;
+  'data/exportMarkdown': () => AppResult<{ markdown: string }>;
+  'data/previewImport': (
+    input: { data: string },
+  ) => AppResult<{ databaseName: string; tables: Array<{ name: string; rowCount: number }>; confirmationToken: string }>;
+  'data/import': (
+    input: { data: string; mode: 'replace' | 'merge'; tableCount: number; confirmationToken: string },
+  ) => AppResult<{ imported: boolean }>;
+  'data/clearInbox': (input: { confirmationToken: string }) => AppResult<{ cleared: number }>;
+  'data/clearAll': (input: { confirmationToken: string }) => AppResult<{ cleared: true }>;
+  'data/mintConfirmation': (
+    input: { operation: 'data.clear-inbox' | 'data.clear-all' },
+  ) => AppResult<{ token: string }>;
 
   // ── Dashboard ──
   'dashboard/counts': () => AppResult<DashboardCounts>;
@@ -395,7 +448,7 @@ export type FsrsImpactPreview = {
   summary: string;
 };
 
-export type AiTaskType = 'quick-explain' | 'full-explain' | 'similar-cards' | 'context-extract';
+export type AiTaskType = 'quick-explain' | 'full-analysis' | 'practice-generate';
 
 export type AiTaskRequest = {
   taskId: string;
@@ -469,4 +522,35 @@ export type DashboardCounts = {
   overdue: number;
   inbox: number;
   newThisWeek: number;
+};
+
+export type InboxListItem = {
+  itemId: string;
+  status: string;
+  selectedText: string;
+  pageTitle?: string;
+  url?: string;
+  createdAt: string;
+  hasFailure: boolean;
+  suggestions: Array<{ confidence: string; targetCardId?: string; rationale?: string }>;
+};
+
+export type SourcePageListItem = {
+  pageId: string;
+  url: string;
+  title: string;
+  domain: string;
+  cardCount: number;
+  inboxCount: number;
+  lastCapturedAt: string;
+};
+
+export type KnowledgeStats = {
+  totalCards: number;
+  byType: Record<string, number>;
+  byStatus: Record<string, number>;
+  newThisWeek: number;
+  reviewsToday: number;
+  dueCounts: { overdue: number; due: number; learning: number; new: number };
+  topErrorTypes: Array<{ type: string; count: number }>;
 };
