@@ -62,6 +62,31 @@ export function checkManifest() {
     }
   }
 
+  // Command shortcuts must satisfy Chrome's accelerator rules, or Chrome
+  // rejects the whole manifest at load time. Rules: a modifier (Ctrl/Alt/
+  // Command/MacCtrl) plus a key; Shift is only a secondary modifier; the key
+  // must be an allowed non-modifier (A-Z, 0-9, F1-F12, or a named media/
+  // navigation key). Escape/Tab/Space etc. are NOT valid command keys.
+  const validCommandKey = /^(?:[A-Z0-9]|F([1-9]|1[0-2])|Comma|Period|Home|End|PageUp|PageDown|Insert|Delete|Up|Down|Left|Right|Media(?:NextTrack|PlayPause|PrevTrack|Stop))$/;
+  for (const [name, cmd] of Object.entries(manifest.commands || {})) {
+    const combos = cmd?.suggested_key;
+    if (!combos) continue;
+    for (const [platform, accel] of Object.entries(combos)) {
+      const parts = String(accel).split('+');
+      const key = parts[parts.length - 1];
+      const modifiers = parts.slice(0, -1);
+      const hasPrimaryModifier = modifiers.some((m) =>
+        ['Ctrl', 'Alt', 'Command', 'MacCtrl'].includes(m),
+      );
+      if (!hasPrimaryModifier) {
+        violations.push(`commands.${name} (${platform}): "${accel}" needs a Ctrl/Alt/Command modifier.`);
+      }
+      if (!validCommandKey.test(key)) {
+        violations.push(`commands.${name} (${platform}): "${key}" is not a valid Chrome command key (Escape/Tab/etc. are rejected).`);
+      }
+    }
+  }
+
   return { passed: violations.length === 0, violations };
 }
 

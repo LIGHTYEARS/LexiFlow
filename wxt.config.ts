@@ -30,7 +30,9 @@ export default defineConfig({
         description: 'Start today review',
       },
       'close-ui': {
-        suggested_key: { default: 'Alt+Escape' },
+        // No suggested_key: Chrome rejects Escape as a command accelerator, and
+        // Esc-to-close is already handled locally by the content script keydown
+        // listener. User may assign a key in chrome://extensions/shortcuts.
         description: 'Close LexiFlow page UI',
       },
       // No suggested_key (Chrome MV3 limits suggested keys to 4); user can
