@@ -12,11 +12,10 @@ import { createRoot } from 'react-dom/client';
 // See technical-design/02 §8.1 and technical-design/03.
 
 export default defineContentScript({
-  // No static matches — content script is registered at runtime
-  // only for origins the user has explicitly authorized (see background.ts).
-  matches: [],
+  // Inject into all http/https pages. The SelectionController checks site policy
+  // and only shows the trigger on authorized sites.
+  matches: ['http://*/*', 'https://*/*'],
   runAt: 'document_idle',
-  registration: 'runtime',
 
   async main(ctx) {
     console.log('[LexiFlow] Content script loaded on:', window.location.href);
